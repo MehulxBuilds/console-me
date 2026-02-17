@@ -9,10 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@repo/ui": "workspace:*",
-    "@repo/db": "workspace:*",
     "@base-ui/react": "^1.2.0",
     "@hookform/resolvers": "^5.2.2",
+    "@repo/auth": "workspace:*",
+    "@repo/db": "workspace:*",
+    "@repo/ui": "workspace:*",
+    "better-auth": "^1.4.18",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
