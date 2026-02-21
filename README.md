@@ -2,6 +2,6 @@
 
 ![System Architecture](./assets/readme/main-flow.png)
 
-### Omega Feature
+### Omegle Feature
 
 ![System Architecture](./assets/readme/feature-omegle.png)
