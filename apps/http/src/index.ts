@@ -3,7 +3,7 @@ import cookieParser from "cookie-parser";
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import { auth } from "@repo/auth";
-import { redis } from "@repo/redis";
+import { redis } from "@repo/cache";
 
 const app = express();
 
