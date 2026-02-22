@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import { auth } from "@repo/auth";
+import { redis } from "@repo/redis";
 
 const app = express();
 
@@ -23,7 +24,10 @@ app.get("/api/me", async (req, res) => {
     return res.json(session);
 });
 
-app.get("/", (req, res) => {
+app.get("/", async(req, res) => {
+    await redis.set("greeting", "Hello from Redis!");
+    console.log(await redis.get("greeting"))
+    await redis.del("greeting");
     res.send("Hello World!");
 });
 
