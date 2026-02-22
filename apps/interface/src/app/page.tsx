@@ -1,5 +1,9 @@
+"use client";
+
 import { Heart, MessageCircleMore, ShieldCheck, Sparkles, Video } from "lucide-react";
 import { ThemeToggle } from "../components/theme-toggle";
+import { redirect } from "next/navigation";
+import { env } from "@/lib/env";
 
 const navItems = [
   { label: "How it works", href: "#how-it-works" },
@@ -108,7 +112,7 @@ export default function Home() {
             </p>
 
             <div className="fade-up-delay-2 mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-              <button className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:opacity-90 dark:bg-white dark:text-black">
+              <button className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:opacity-90 dark:bg-white dark:text-black" onClick={() => redirect(env.APP_URL + "/sign-in")}>
                 Join Free
               </button>
               <button className="rounded-full border border-black/20 bg-white/80 px-6 py-3 text-sm font-semibold text-black transition hover:-translate-y-0.5 dark:border-white/25 dark:bg-zinc-900/70 dark:text-white">
