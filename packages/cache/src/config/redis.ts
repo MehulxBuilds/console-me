@@ -29,22 +29,6 @@ export const setUserOffline = async (userId: string) => {
     await redis.del(`user:online:${userId}`);
 };
 
-export const publishEvent = async (channel: string, message: any) => {
-    await pub.publish(channel, JSON.stringify(message));
-};
-
-export const subscribeToEvent = (
-    channel: string,
-    callback: (message: any) => void,
-) => {
-    sub.subscribe(channel);
-    sub.on("message", (chn: string, msg: string) => {
-        if (chn === channel) {
-            callback(JSON.parse(msg));
-        }
-    });
-};
-
 // Last Seen Redis Functions
 export const updateLastSeenInRedis = async (userId: string, channelId: string, messageId: string) => {
     await redis.hset(`user:lastseen:${userId}`, channelId, messageId);
