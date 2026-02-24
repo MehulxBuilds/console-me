@@ -15,7 +15,8 @@
   "exports": {
     ".": {
       "default": "./src/index.ts"
-    }
+    },
+    "./values": "./src/values.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

@@ -4,4 +4,6 @@ dotenv.config({ path: "../../.env" });
 export const env = {
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    WEB_APP_URL: process.env.WEB_APP_URL,
+    NODE_ENV: process.env.NODE_ENV,
 };
