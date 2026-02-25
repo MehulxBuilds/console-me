@@ -12,11 +12,23 @@ import userRoutes from "./routes/user-routes";
 
 const app = express();
 
-app.use(cors({
-    origin: [env.WEB_APP_URL!],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-}));
+const allowedOrigins = [env.WEB_APP_URL, env.APP_URL, "http://localhost:3000"].filter(
+    (origin): origin is string => Boolean(origin),
+);
+
+app.use(
+    cors({
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+                return;
+            }
+            callback(new Error(`CORS blocked for origin: ${origin}`));
+        },
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        credentials: true,
+    }),
+);
 app.use(cookieParser());
 app.use(express.json());
 
@@ -44,4 +56,5 @@ app.listen(5000, async () => {
     await client.$connect();
     console.log("Database connected successfully");
     console.log("Server is running on port 5000");
+    console.log(`Allowed CORS origins: ${allowedOrigins.join(", ")}`);
 });
