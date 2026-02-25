@@ -1,0 +1,229 @@
+import { kafka, TOPICS, getProducer } from "@repo/kafka";
+import { client } from "@repo/db";
+import { getPostCache } from "@repo/cache";
+import type { Consumer, EachBatchPayload } from "@repo/kafka";
+
+export interface PostMessage {
+    id: string;
+    creatorId: string;
+    caption?: string;
+    isLocked: boolean;        // consider changing to boolean in real implementation
+    price?: number;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export class PostConsumer {
+    private consumer: Consumer;
+    private isRunning = false;
+
+    constructor() {
+        this.consumer = kafka.consumer({
+            groupId: "post-processor", // separate consumer group
+        });
+    }
+
+    async start() {
+        if (this.isRunning) return;
+
+        try {
+            await this.consumer.connect();
+            console.log("Kafka PostConsumer: Connected and listening...");
+
+            await this.consumer.subscribe({
+                topics: [TOPICS.POST],
+                fromBeginning: false,
+            });
+
+            await this.consumer.run({
+                eachBatchAutoResolve: false,
+                eachBatch: async ({
+                    batch,
+                    resolveOffset,
+                    heartbeat,
+                    isRunning,
+                }: EachBatchPayload) => {
+                    const messages = batch.messages;
+                    const batchSize = 500;
+                    const flushInterval = 10000;
+
+                    console.log(
+                        `PostConsumer received ${messages.length} messages from Kafka`,
+                    );
+
+                    let currentBatch: (PostMessage & { offset: string })[] = [];
+                    let lastFlush = Date.now();
+
+                    for (const message of messages) {
+                        if (!isRunning()) break;
+
+                        try {
+                            const rawValue = message.value?.toString();
+                            if (!rawValue) continue;
+
+                            const content = JSON.parse(rawValue) as PostMessage;
+                            currentBatch.push({
+                                ...content,
+                                offset: message.offset,
+                            });
+
+                            const now = Date.now();
+                            if (
+                                currentBatch.length >= batchSize ||
+                                now - lastFlush >= flushInterval
+                            ) {
+                                await this.processBatchItems(currentBatch);
+                                const lastMsg = currentBatch[currentBatch.length - 1];
+                                if (lastMsg) {
+                                    resolveOffset(lastMsg.offset);
+                                }
+                                await heartbeat();
+                                currentBatch = [];
+                                lastFlush = Date.now();
+                            }
+                        } catch (error) {
+                            console.error(
+                                "Error parsing/buffering post message:",
+                                error,
+                            );
+                            resolveOffset(message.offset);
+                        }
+                    }
+
+                    if (currentBatch.length > 0) {
+                        await this.processBatchItems(currentBatch);
+                        const lastMsg = currentBatch[currentBatch.length - 1];
+                        if (lastMsg) {
+                            resolveOffset(lastMsg.offset);
+                        }
+                        await heartbeat();
+                    }
+                },
+            });
+
+            this.isRunning = true;
+        } catch (error) {
+            console.error("Failed to start post consumer:", error);
+            throw error;
+        }
+    }
+
+    async stop() {
+        if (this.isRunning) {
+            await this.consumer.disconnect();
+            this.isRunning = false;
+            console.log("Kafka PostConsumer: Stopped successfully");
+        }
+    }
+
+    private async processBatchItems(
+        messages: (PostMessage & { offset: string })[],
+    ) {
+        if (messages.length === 0) return;
+
+        console.log(`⚡ PostConsumer processing batch of ${messages.length} items...`);
+        const startTime = Date.now();
+
+        const posts = messages.map((msg) => ({
+            id: msg.id,
+            creatorId: msg.creatorId,
+            caption: msg.caption,
+            isLocked: msg.isLocked,
+            price: msg.price,
+            createdAt: msg.createdAt,
+            updatedAt: msg.updatedAt,
+        }));
+
+        try {
+            await client.post.createMany({
+                data: posts,
+                skipDuplicates: true,
+            });
+
+            const duration = Date.now() - startTime;
+            console.log(`✅ Post batch persisted: ${posts.length} posts (${duration}ms)`);
+
+            const postCache = getPostCache();
+            const invalidatedKeys = new Set<string>();
+
+            for (const msg of posts) {
+                // Invalidate the "initial" page (latest messages)
+                const key = `post:${msg.id}:post:initial`;
+                if (!invalidatedKeys.has(key)) {
+                    await postCache.invalidatePost(key);
+                    invalidatedKeys.add(key);
+                }
+            }
+
+        } catch (e) {
+            console.error(
+                "❌ Post database batch write failed. Initiating recovery...",
+                e,
+            );
+
+            const producer = getProducer();
+            try {
+                for (const msg of messages) {
+                    const originalMessage = { ...msg };
+                    // @ts-expect-error - remove offset before re-publishing
+                    delete originalMessage.offset;
+                    await producer.publishPost(originalMessage);
+                }
+                console.log(
+                    `🔄 Post recovery: Re-queued ${messages.length} messages to Kafka topic.`,
+                );
+            } catch (produceError) {
+                console.error(
+                    "🔥 CRITICAL: Failed to re-queue post messages! Data loss possible.",
+                    produceError,
+                );
+            }
+        }
+    }
+
+    async getLag(): Promise<number> {
+        const admin = kafka.admin();
+        try {
+            await admin.connect();
+            let totalLag = 0;
+            const groupOffsets = await admin.fetchOffsets({
+                groupId: "post-processor",
+                topics: [TOPICS.POST],
+            });
+
+            for (const topicOffset of groupOffsets) {
+                const topicOffsets = await admin.fetchTopicOffsets(
+                    topicOffset.topic,
+                );
+
+                for (const partition of topicOffset.partitions) {
+                    const consumerOffset = partition.offset
+                        ? parseInt(partition.offset)
+                        : 0;
+                    const topicPartition = topicOffsets.find(
+                        (tp: {
+                            partition: number;
+                            high: string;
+                            low: string;
+                        }) => tp.partition === partition.partition,
+                    );
+                    const highWatermark = topicPartition?.high
+                        ? parseInt(topicPartition.high)
+                        : 0;
+                    totalLag += highWatermark - consumerOffset;
+                }
+            }
+            return totalLag;
+        } finally {
+            await admin.disconnect();
+        }
+    }
+}
+
+let postConsumerInstance: PostConsumer | null = null;
+export function getPostConsumer(): PostConsumer {
+    if (!postConsumerInstance) {
+        postConsumerInstance = new PostConsumer();
+    }
+    return postConsumerInstance;
+}
