@@ -3,12 +3,12 @@ import cookieParser from "cookie-parser";
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import { auth } from "@repo/auth";
-import { redis } from "@repo/cache";
 import { client } from "@repo/db";
 import { env } from "./config/env";
 import postRoutes from "./routes/post-routes";
 import creatorRoutes from "./routes/creator-routes";
 import userRoutes from "./routes/user-routes";
+import notificationRoutes from "./routes/notification-routes";
 
 const app = express();
 
@@ -41,16 +41,14 @@ app.get("/api/me", async (req, res) => {
     return res.json(session);
 });
 
+app.get('/health', (req, res) => {
+    res.send("All Good!")
+})
+
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/post", postRoutes);
 app.use('/api/v1/creator', creatorRoutes);
-
-app.get("/", async (req, res) => {
-    await redis.set("greeting", "Hello from Redis!");
-    console.log(await redis.get("greeting"))
-    await redis.del("greeting");
-    res.send("Hello World!");
-});
+app.use('/api/v1/notification', notificationRoutes);
 
 app.listen(5000, async () => {
     await client.$connect();
