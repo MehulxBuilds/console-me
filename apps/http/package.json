@@ -18,6 +18,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@repo/ai-service": "workspace:*",
     "@repo/auth": "workspace:*",
     "@repo/cache": "workspace:*",
     "@repo/db": "workspace:*",
