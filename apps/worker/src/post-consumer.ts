@@ -11,6 +11,8 @@ export interface PostMessage {
     price?: number;
     createdAt: Date;
     updatedAt: Date;
+    media_url: string;
+    media_type: string;
 }
 
 export class PostConsumer {
@@ -132,13 +134,29 @@ export class PostConsumer {
             price: msg.price,
             createdAt: msg.createdAt,
             updatedAt: msg.updatedAt,
+            media_url: msg.media_url,
+            media_type: msg.media_type,
         }));
 
         try {
-            await client.post.createMany({
-                data: posts,
-                skipDuplicates: true,
-            });
+            await client.$transaction(
+                messages.map((msg) =>
+                    client.post.create({
+                        data: {
+                            caption: msg.caption,
+                            isLocked: msg.isLocked,
+                            creatorId: msg.creatorId,
+                            price: msg.price,
+                            media: {
+                                create: {
+                                    url: msg.media_url,
+                                    type: msg.media_type as any,
+                                }
+                            }
+                        },
+                    })
+                )
+            );
 
             const duration = Date.now() - startTime;
             console.log(`✅ Post batch persisted: ${posts.length} posts (${duration}ms)`);
@@ -148,7 +166,7 @@ export class PostConsumer {
 
             for (const msg of posts) {
                 // Invalidate the "initial" page (latest messages)
-                const key = `post:${msg.id}:post:initial`;
+                const key = `creator:${msg?.creatorId}:posts:initial`;
                 if (!invalidatedKeys.has(key)) {
                     await postCache.invalidatePost(key);
                     invalidatedKeys.add(key);

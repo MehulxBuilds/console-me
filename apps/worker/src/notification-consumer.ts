@@ -152,7 +152,8 @@ export class NotificationConsumer {
 
             for (const msg of posts) {
                 // Invalidate the "initial" page (latest messages)
-                const key = `post:${msg.id}:post:initial`;
+                const key = `notification:${msg.userId}:initial`;
+                
                 if (!invalidatedKeys.has(key)) {
                     await NotificationCache.invalidateNotification(key);
                     invalidatedKeys.add(key);
