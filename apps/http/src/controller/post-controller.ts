@@ -4,10 +4,13 @@ import { catchAsync } from "../utils/catch-async.js";
 import { AppError } from "../utils/app-error.js";
 import type { AuthRequest } from "../middleware/user-middleware.js";
 import { CreatorPostType } from "../types/index.js";
+import { getProducer } from "@repo/kafka";
+import { getPostCache } from "@repo/cache";
 
 export const createPost = catchAsync(
     async (req: AuthRequest, res: Response) => {
         try {
+            const userId = req.userId;
             const creatorId = req.creatorId;
 
             const { success, data } = CreatorPostType.safeParse(req.body);
@@ -16,28 +19,63 @@ export const createPost = catchAsync(
                 throw new AppError("Invalid data", 400);
             }
 
-            const create = await client.post.create({
-                data: {
-                    caption: data.caption!,
-                    isLocked: data.isLocked!,
-                    creatorId: creatorId!,
-                    price: data.price!,
-                    media: {
-                        create: {
-                            url: data.media_url,
-                            type: data.media_type,
-                        }
-                    }
+            const postId = crypto.randomUUID();
+            const noftificationId = crypto.randomUUID();
+
+            // const create = await client.post.create({
+            //     data: {
+            //         caption: data.caption!,
+            //         isLocked: data.isLocked!,
+            //         creatorId: creatorId!,
+            //         price: data.price!,
+            //         media: {
+            //             create: {
+            //                 url: data.media_url,
+            //                 type: data.media_type,
+            //             }
+            //         }
+            //     }
+            // })
+
+            const username = await client.creatorProfile.findUnique({
+                where: {
+                    id: creatorId,
                 }
             })
 
-            if (!create) {
-                throw new AppError("Failed to create post", 400);
-            }
+            const create = getProducer().publishPost({
+                id: postId,
+                isLocked: data?.isLocked ?? false,
+                caption: data.caption,
+                createdAt: new Date(),
+                creatorId: creatorId!,
+                price: data.price,
+                updatedAt: new Date(),
+                media_type: data.media_url,
+                media_url: data.media_url,
+            })
+
+            const notify = getProducer().publishNotification({
+                id: noftificationId,
+                createdAt: new Date(),
+                isRead: false,
+                type: "NEW_MESSAGE",
+                updatedAt: new Date(),
+                userId: userId!,
+                message: "A new post is live",
+                notifyLink: `/creator/${username?.username}/post/${postId}`,
+                topic: "New Post",
+
+            })
+
+            // if (!create) {
+            //     throw new AppError("Failed to create post", 400);
+            // }
 
             res.status(200).json({
                 success: true,
-                message: "Posted successfully"
+                message: "Posted successfully",
+                postId: postId,
             })
 
         } catch (e) {
@@ -91,7 +129,7 @@ export const updatePost = catchAsync(
             console.error(`Error: ${e}`);
             res.status(500).json({
                 success: false,
-                message: "Failed to Update Profiles", e,
+                message: "Failed to Update Post", e,
             });
         }
     }
@@ -122,7 +160,7 @@ export const deletePost = catchAsync(
             console.error(`Error: ${e}`);
             res.status(500).json({
                 success: false,
-                message: "Failed to Update Profiles", e,
+                message: "Failed to delete Post", e,
             });
         }
     }
@@ -153,7 +191,7 @@ export const fetchPost = catchAsync(
             console.error(`Error: ${e}`);
             res.status(500).json({
                 success: false,
-                message: "Failed to Update Profiles", e,
+                message: "Failed to fetch Post", e,
             });
         }
     }
@@ -163,10 +201,60 @@ export const fetchAllPost = catchAsync(
     async (req: AuthRequest, res: Response) => {
         try {
             const creatorId = req.creatorId;
+            const creatorPostCacheKey = `creator:${creatorId}:posts:initial`;
+            let fetchpost;
 
-            const fetchpost = await client.post.findMany();
+            const postCache = getPostCache();
+            fetchpost = await postCache.getPost(creatorPostCacheKey);
 
             if (!fetchpost) {
+                fetchpost = await client.post.findMany({
+                    where: {
+                        creatorId: creatorId,
+                    }
+                });
+
+                await postCache.addPost(creatorPostCacheKey, fetchpost);
+            }
+
+            if (!fetchpost) {
+                throw new AppError("Failed to fetch post", 400);
+            }
+
+            res.status(200).json({
+                success: true,
+                message: "Posted fetched successfully"
+            })
+        } catch (e) {
+            console.error(`Error: ${e}`);
+            res.status(500).json({
+                success: false,
+                message: "Failed to fetch Posts", e,
+            });
+        }
+    }
+);
+
+export const getFeedPost = catchAsync(
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const userId = req.userId;
+            const feedCacheKey = `feed:${userId}:initial`;
+
+            let feedpost;
+
+            const postCache = getPostCache();
+            feedpost = await postCache.getPost(feedCacheKey);
+
+            if (!feedpost) {
+                feedpost = await client.post.findMany({
+                    take: 20
+                });
+
+                await postCache.addPost(feedCacheKey, feedpost)
+            }
+
+            if (!feedpost) {
                 throw new AppError("Failed to fetch post", 400);
             }
 

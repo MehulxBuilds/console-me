@@ -5,6 +5,7 @@ import { catchAsync } from "../utils/catch-async.js";
 import { AppError } from "../utils/app-error.js";
 import type { AuthRequest } from "../middleware/user-middleware.js";
 import { UsernameType, UserProfileUpdate } from "../types/index.js";
+import { getProducer } from "@repo/kafka";
 
 export const claimUsername = catchAsync(
     async (req: AuthRequest, res: Response) => {
@@ -55,6 +56,20 @@ export const claimUsername = catchAsync(
                     }
                 });
             });
+
+            const noftificationId = crypto.randomUUID();
+
+            const notify = getProducer().publishNotification({
+                id: noftificationId,
+                createdAt: new Date(),
+                isRead: false,
+                type: "NEW_MESSAGE",
+                updatedAt: new Date(),
+                userId: userId!,
+                message: "Profile Created Successfully",
+                notifyLink: `/creator/${data?.username}`,
+                topic: "Creator Profile",
+            })
 
             res.status(200).json({
                 success: true,
