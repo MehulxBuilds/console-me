@@ -1,10 +1,13 @@
 import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { protect } from "../middleware/user-middleware";
-import { createProfile, updateProfile, fetchProfile, fetchAllProfile, switchProfile } from "../controller/creator-controller";
+import { createProfile, updateProfile, fetchProfile, fetchAllProfile, switchProfile, fetchProfileByUsername } from "../controller/creator-controller";
 import { protectCreator } from "../middleware/creator-middleware";
 
 const creatorRoutes: ExpressRouter = Router();
+
+// Public route for fetching creator by username
+creatorRoutes.get('/u/:username', fetchProfileByUsername);
 
 creatorRoutes.use(protect);
 

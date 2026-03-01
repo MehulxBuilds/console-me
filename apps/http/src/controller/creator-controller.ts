@@ -45,7 +45,7 @@ export const updateProfile = catchAsync(
             const userId = req.userId;
             const { success, data } = CreatorProfileUpdate.safeParse(req.body);
 
-            if(!success) {
+            if (!success) {
                 throw new AppError("Invalid data", 400);
             }
 
@@ -133,7 +133,8 @@ export const fetchProfile = catchAsync(
 
             res.status(200).json({
                 success: true,
-                message: "Profiles fetched successfully"
+                message: "Profiles fetched successfully",
+                data: creatorProfiles
             })
         } catch (e) {
             console.error(`Error: ${e}`);
@@ -151,6 +152,7 @@ export const fetchAllProfile = catchAsync(
             const creatorProfiles = await client.creatorProfile.findMany({
                 select: {
                     id: true,
+                    username: true,
                     subscriptionPrice: true,
                     user: true,
                     createdAt: true,
@@ -163,13 +165,59 @@ export const fetchAllProfile = catchAsync(
 
             res.status(200).json({
                 success: true,
-                message: "Profiles fetched successfully"
+                message: "Profiles fetched successfully",
+                data: creatorProfiles
             })
         } catch (e) {
             console.error(`Error: ${e}`);
             res.status(500).json({
                 success: false,
                 message: "Failed to fetched Profiles", e,
+            });
+        }
+    }
+);
+
+export const fetchProfileByUsername = catchAsync(
+    async (req: Request, res: Response) => {
+        try {
+            const { username } = req.params;
+
+            const creatorProfile = await client.creatorProfile.findFirst({
+                where: {
+                    username: username as string,
+                },
+                select: {
+                    id: true,
+                    username: true,
+                    userId: true,
+                    subscriptionPrice: true,
+                    user: {
+                        select: {
+                            name: true,
+                            image: true,
+                            bio: true,
+                            createdAt: true,
+                        }
+                    },
+                    createdAt: true,
+                }
+            });
+
+            if (!creatorProfile) {
+                throw new AppError("Creator not found", 404);
+            }
+
+            res.status(200).json({
+                success: true,
+                message: "Profile fetched successfully",
+                data: creatorProfile
+            })
+        } catch (e) {
+            console.error(`Error: ${e}`);
+            res.status(500).json({
+                success: false,
+                message: "Failed to fetch profile", e,
             });
         }
     }

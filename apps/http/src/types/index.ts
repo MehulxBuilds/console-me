@@ -19,11 +19,11 @@ export const UserProfileUpdate = z.object({
 })
 
 export const CreatorPostType = z.object({
-    caption: z.string("Not a valid string").min(2).max(50),
+    caption: z.string("Not a valid string").max(500).optional(),
     isLocked: z.boolean("Not a valid boolean").optional(),
     price: z.number("Not a valid Number").optional(),
-    media_type: z.nativeEnum(MediaType),
-    media_url: z.string("Not a valid string"),
+    media_type: z.nativeEnum(MediaType).optional(),
+    media_url: z.string("Not a valid string").optional(),
 })
 
 export const MarkingNotificationReadType = z.object({

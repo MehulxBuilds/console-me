@@ -7,8 +7,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useOnboardingStore } from "@/store/onboarding-store";
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui";
 import { ArrowRight, CheckCircle2, Loader2, XCircle, Sparkles, User, AtSign } from "lucide-react";
-
-const API_BASE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:5000";
+import { API_BASE } from "@/utils/constants";
 
 export default function OnboardingPage() {
     const router = useRouter();

@@ -18,8 +18,10 @@ export const ourFileRouter = {
     })
         .middleware(async () => {
             const user = await currentUser();
-            if (!user) throw new UploadThingError("Unauthorized");
-            return { user: user }
+            if (!user) {
+                throw new UploadThingError("Unauthorized");
+            }
+            return { user };
         })
         .onUploadComplete(async ({ file }) => {
             return { fileUrl: file.url, fileType: file.type }

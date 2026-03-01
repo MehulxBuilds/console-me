@@ -15,7 +15,14 @@ export async function GET() {
   // Fetch username from CreatorProfile since Better Auth doesn't return custom fields
   const dbUser = await client.user.findUnique({
     where: { id: session.user.id },
-    select: { creatorProfile: { select: { username: true } } },
+    select: {
+      creatorProfile: {
+        select: {
+          id: true,
+          username: true,
+        },
+      },
+    },
   });
 
   return NextResponse.json({
@@ -23,6 +30,7 @@ export async function GET() {
     user: {
       ...session.user,
       username: dbUser?.creatorProfile?.username ?? null,
+      creatorId: dbUser?.creatorProfile?.id ?? null,
     },
   });
 }

@@ -22,6 +22,8 @@ import {
 import { useMeQuery } from "@/hooks/use-me-query";
 import { useHomeUIStore } from "@/store/home-ui-store";
 import { useRouter } from "next/navigation";
+import { useCreatorPosts } from "@/hooks/use-creator-posts";
+import { formatDistanceToNow } from "date-fns";
 
 const navItems = [
   { label: "Home", icon: Home },
@@ -39,28 +41,8 @@ const fallbackBanner =
 const fallbackAvatar =
   "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=faces";
 
-const profilePosts = [
-  {
-    time: "2h",
-    content: "Pinned set preview. More content drops tonight.",
-    image:
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1280&h=800&fit=crop",
-    comments: "1.1K",
-    reposts: "2.4K",
-    likes: "42K",
-    views: "620K",
-  },
-  {
-    time: "5h",
-    content: "Thanks for the support. New subscriber-only bundle is live.",
-    image:
-      "https://images.unsplash.com/photo-1544717305-2782549b5136?w=1280&h=800&fit=crop",
-    comments: "980",
-    reposts: "1.2K",
-    likes: "28K",
-    views: "410K",
-  },
-];
+// Empty array to replace, we will use useCreatorPosts now
+const profilePosts: any[] = [];
 
 function formatJoinedDate(createdAt?: string) {
   if (!createdAt) return "Joined January 2026";
@@ -78,6 +60,9 @@ export default function ProfilePage() {
   const router = useRouter();
   const { activeNav, setActiveNav } = useHomeUIStore();
   const { data: meData, isLoading, isError } = useMeQuery(true);
+  
+  const creatorId = meData?.user?.creatorId;
+  const { data: realPosts, isLoading: postsLoading } = useCreatorPosts(creatorId || undefined);
 
   const profileName = meData?.user?.name || "Console Me User";
   const profileHandle = meData?.user?.username
@@ -135,7 +120,7 @@ export default function ProfilePage() {
           </button>
           <div className="min-w-0">
             <p className="truncate text-2xl font-bold">{profileName}</p>
-            <p className="text-sm text-zinc-400">1,802 posts</p>
+            <p className="text-sm text-zinc-400">{realPosts?.length || 0} posts</p>
           </div>
         </header>
 
@@ -188,9 +173,22 @@ export default function ProfilePage() {
         </section>
 
         <section>
-          {profilePosts.map((post, index) => (
+          {postsLoading && (
+            <div className="flex justify-center p-8">
+              <p className="text-zinc-400">Loading posts...</p>
+            </div>
+          )}
+
+          {!postsLoading && (!realPosts || realPosts.length === 0) && (
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <p className="text-xl font-bold text-white">No posts yet</p>
+              <p className="text-zinc-500">When you post, they will show up here.</p>
+            </div>
+          )}
+
+          {realPosts?.map((post, index) => (
             <article
-              key={`${post.time}-${index}`}
+              key={post.id}
               className="border-b border-zinc-800 px-4 py-4 transition hover:bg-white/[0.02]"
             >
               <div className="flex gap-3">
@@ -199,26 +197,44 @@ export default function ProfilePage() {
                   <div className="mb-2 flex items-center justify-between">
                     <div className="truncate">
                       <span className="text-[17px] font-semibold">{profileName}</span>
-                      <span className="ml-2 text-sm text-zinc-400">{profileHandle} - {post.time}</span>
+                      <span className="ml-2 text-sm text-zinc-400">
+                        {profileHandle} - {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                      </span>
                     </div>
                     <Ellipsis className="h-5 w-5 text-zinc-500" />
                   </div>
-                  <p className="mb-3 text-[17px] leading-6 text-zinc-100">{post.content}</p>
-                  <div className="overflow-hidden rounded-2xl border border-zinc-800">
-                    <img src={post.image} alt={`${profileName} post ${index + 1}`} className="h-[320px] w-full object-cover" />
-                  </div>
+                  <p className="mb-3 text-[17px] leading-6 text-zinc-100">{post.caption}</p>
+                  
+                  {post.media_url && (
+                    <div className="overflow-hidden rounded-2xl border border-zinc-800">
+                      {post.media_type === "VIDEO" ? (
+                        <video 
+                          src={post.media_url} 
+                          className="h-[320px] w-full object-cover" 
+                          controls
+                        />
+                      ) : (
+                        <img 
+                          src={post.media_url} 
+                          alt={`Post by ${profileName}`} 
+                          className="h-[320px] w-full object-cover" 
+                        />
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-3 flex items-center justify-between text-zinc-500">
                     <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-sky-500/10 hover:text-sky-400" type="button">
                       <MessageCircle className="h-4 w-4" />
-                      <span className="text-xs">{post.comments}</span>
+                      <span className="text-xs">0</span>
                     </button>
                     <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-emerald-500/10 hover:text-emerald-400" type="button">
                       <Repeat2 className="h-4 w-4" />
-                      <span className="text-xs">{post.reposts}</span>
+                      <span className="text-xs">0</span>
                     </button>
                     <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-pink-500/10 hover:text-pink-400" type="button">
                       <Heart className="h-4 w-4" />
-                      <span className="text-xs">{post.likes}</span>
+                      <span className="text-xs">0</span>
                     </button>
                     <button className="rounded-full p-1 hover:bg-white/10 hover:text-white" type="button">
                       <Share className="h-4 w-4" />

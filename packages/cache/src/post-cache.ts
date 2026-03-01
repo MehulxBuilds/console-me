@@ -44,9 +44,31 @@ export class PostCache {
     async invalidatePost(key: string): Promise<void> {
         try {
             await this.redis.del(key);
-            console.log(`[MessageCache] Invalidated key: ${key}`);
+            console.log(`[PostCache] Invalidated key: ${key}`);
         } catch (error) {
-            console.error("[MessageCache] Failed to invalidate key:", error);
+            console.error("[PostCache] Failed to invalidate key:", error);
+        }
+    }
+
+    async invalidateByPattern(pattern: string): Promise<void> {
+        try {
+            let cursor = "0";
+            do {
+                const [nextCursor, keys] = await this.redis.scan(
+                    cursor,
+                    "MATCH",
+                    pattern,
+                    "COUNT",
+                    100,
+                );
+                cursor = nextCursor;
+                if (keys.length > 0) {
+                    await this.redis.del(...keys);
+                    console.log(`[PostCache] Invalidated ${keys.length} keys matching: ${pattern}`);
+                }
+            } while (cursor !== "0");
+        } catch (error) {
+            console.error("[PostCache] Failed to invalidate by pattern:", error);
         }
     }
 }

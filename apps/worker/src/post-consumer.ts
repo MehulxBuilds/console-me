@@ -165,13 +165,16 @@ export class PostConsumer {
             const invalidatedKeys = new Set<string>();
 
             for (const msg of posts) {
-                // Invalidate the "initial" page (latest messages)
+                // Invalidate the creator's profile posts cache
                 const key = `creator:${msg?.creatorId}:posts:initial`;
                 if (!invalidatedKeys.has(key)) {
                     await postCache.invalidatePost(key);
                     invalidatedKeys.add(key);
                 }
             }
+
+            // Invalidate feed caches for users so they see fresh posts
+            await postCache.invalidateByPattern("feed:*:initial");
 
         } catch (e) {
             console.error(
