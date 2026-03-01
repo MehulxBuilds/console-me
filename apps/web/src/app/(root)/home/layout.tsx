@@ -1,8 +1,8 @@
-import { requireAuth } from "@/utils/auth-utils";
+import { requireOnboardingComplete } from "@/utils/auth-utils";
 import type { ReactNode } from "react";
 
 export default async function HomeLayout({ children }: { children: ReactNode }) {
-  await requireAuth();
+  await requireOnboardingComplete();
 
   return (
     <div className="min-h-screen bg-black font-sans text-white">

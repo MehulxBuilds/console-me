@@ -56,3 +56,24 @@ export const currentUser = async () => {
 
     return user;
 }
+
+export const checkCreatorProfile = async (userId: string) => {
+    const profile = await client.creatorProfile.findUnique({
+        where: { userId },
+        select: { username: true },
+    });
+
+    return profile;
+};
+
+export const requireOnboardingComplete = async () => {
+    const session = await requireAuth();
+
+    const profile = await checkCreatorProfile(session.user.id);
+
+    if (!profile) {
+        redirect("/onboarding");
+    }
+
+    return { session, profile };
+};
