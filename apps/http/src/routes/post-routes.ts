@@ -6,13 +6,14 @@ import { protectCreator } from "../middleware/creator-middleware";
 
 const postRoutes: ExpressRouter = Router();
 
-postRoutes.use(protect, protectCreator);
+postRoutes.use(protect);
 
-postRoutes.post('/create', createPost);
-postRoutes.put('/update/:postId', updatePost);
-postRoutes.delete('/delete/:postId', deletePost);
-postRoutes.get('/:postId', fetchPost);
+postRoutes.post('/create', protectCreator, createPost);
+postRoutes.put('/update/:postId', protectCreator, updatePost);
+postRoutes.delete('/delete/:postId', protectCreator, deletePost);
+
 postRoutes.get('/fead/all', getFeedPost);
-postRoutes.get('/:creatorId', fetchAllPost);
+postRoutes.get('/creator/:creatorId', fetchAllPost);
+postRoutes.get('/:postId', fetchPost);
 
 export default postRoutes;

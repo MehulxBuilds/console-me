@@ -31,7 +31,7 @@ export const protectCreator = async (
             throw new AppError("User is Not as Creator", 404);
         }
 
-        // req.creatorId = user.creatorProfile?.id!
+        req.creatorId = user.creatorProfile?.id!;
 
         next();
     } catch (error: any) {

@@ -6,6 +6,7 @@ export type MeResponse = {
     name: string;
     email: string;
     username?: string | null;
+    creatorId?: string | null;
     image?: string | null;
     role?: string;
     bio?: string | null;

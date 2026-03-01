@@ -44,11 +44,11 @@ export const currentUser = async () => {
         headers: await headers()
     });
 
-    if (!session) {
-        redirect("/sign-in");
+    if (!session?.user) {
+        return null;
     }
 
-    const user = client.user.findUnique({
+    const user = await client.user.findUnique({
         where: {
             id: session.user.id,
         }

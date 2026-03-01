@@ -22,67 +22,66 @@ export const createPost = catchAsync(
             const postId = crypto.randomUUID();
             const noftificationId = crypto.randomUUID();
 
-            // const create = await client.post.create({
-            //     data: {
-            //         caption: data.caption!,
-            //         isLocked: data.isLocked!,
-            //         creatorId: creatorId!,
-            //         price: data.price!,
-            //         media: {
-            //             create: {
-            //                 url: data.media_url,
-            //                 type: data.media_type,
-            //             }
-            //         }
-            //     }
-            // })
+            const create = await client.post.create({
+                data: {
+                    id: postId,
+                    caption: data.caption || "",
+                    isLocked: data.isLocked || false,
+                    creatorId: userId!, // Use User ID to match schema
+                    price: data.price || 0,
+                    ...(data.media_url && data.media_type ? {
+                        media: {
+                            create: {
+                                url: data.media_url,
+                                type: data.media_type,
+                            }
+                        }
+                    } : {})
+                }
+            });
 
             const username = await client.creatorProfile.findUnique({
                 where: {
                     id: creatorId,
                 }
-            })
+            });
 
-            const create = getProducer().publishPost({
-                id: postId,
-                isLocked: data?.isLocked ?? false,
-                caption: data.caption,
-                createdAt: new Date(),
-                creatorId: creatorId!,
-                price: data.price,
-                updatedAt: new Date(),
-                media_type: data.media_url,
-                media_url: data.media_url,
-            })
+            // Invalidate cache immediately
+            const postCache = getPostCache();
+            const creatorPostCacheKey = `creator:${userId}:posts:initial`;
+            await postCache.invalidatePost(creatorPostCacheKey);
+            await postCache.invalidateByPattern("feed:*:initial");
 
-            const notify = getProducer().publishNotification({
-                id: noftificationId,
-                createdAt: new Date(),
-                isRead: false,
-                type: "NEW_MESSAGE",
-                updatedAt: new Date(),
-                userId: userId!,
-                message: "A new post is live",
-                notifyLink: `/creator/${username?.username}/post/${postId}`,
-                topic: "New Post",
-
-            })
-
-            // if (!create) {
-            //     throw new AppError("Failed to create post", 400);
-            // }
+            // Still publish to Kafka for notifications and other services if needed
+            try {
+                await getProducer().publishNotification({
+                    id: noftificationId,
+                    createdAt: new Date(),
+                    isRead: false,
+                    type: "NEW_MESSAGE",
+                    updatedAt: new Date(),
+                    userId: userId!,
+                    message: "A new post is live",
+                    notifyLink: `/creator/${username?.username}/post/${postId}`,
+                    topic: "New Post",
+                });
+            } catch (kafkaError) {
+                console.warn("Kafka notification failed, but post was created:", kafkaError);
+            }
 
             res.status(200).json({
                 success: true,
                 message: "Posted successfully",
                 postId: postId,
-            })
+                data: create
+            });
 
         } catch (e) {
-            console.error(`Error: ${e}`);
+            console.error(`Error in createPost: ${e}`);
             res.status(500).json({
                 success: false,
-                message: "Failed to Update Profiles", e,
+                message: "Failed to create post",
+                error: String(e),
             });
         }
     }
@@ -185,7 +184,8 @@ export const fetchPost = catchAsync(
 
             res.status(200).json({
                 success: true,
-                message: "Posted fetched successfully"
+                message: "Posted fetched successfully",
+                data: fetchpost,
             })
         } catch (e) {
             console.error(`Error: ${e}`);
@@ -200,8 +200,21 @@ export const fetchPost = catchAsync(
 export const fetchAllPost = catchAsync(
     async (req: AuthRequest, res: Response) => {
         try {
-            const creatorId = req.creatorId;
-            const creatorPostCacheKey = `creator:${creatorId}:posts:initial`;
+            const { creatorId: paramId } = req.params;
+            if (!paramId) {
+                throw new AppError("Creator ID is required", 400);
+            }
+
+            // Check if paramId is a CreatorProfile ID or User ID
+            // In the existing schema, Post.creatorId is a User ID.
+            // But frontend might send the CreatorProfile ID.
+            const profile = await client.creatorProfile.findUnique({
+                where: { id: paramId as string }
+            });
+
+            const targetUserId = profile ? profile.userId : paramId;
+
+            const creatorPostCacheKey = `creator:${targetUserId}:posts:initial`;
             let fetchpost;
 
             const postCache = getPostCache();
@@ -210,9 +223,40 @@ export const fetchAllPost = catchAsync(
             if (!fetchpost) {
                 fetchpost = await client.post.findMany({
                     where: {
-                        creatorId: creatorId,
+                        creatorId: targetUserId as string,
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    },
+                    include: {
+                        media: true,
+                        creator: {
+                            select: {
+                                id: true,
+                                name: true,
+                                image: true,
+                                creatorProfile: {
+                                    select: {
+                                        username: true
+                                    }
+                                }
+                            }
+                        }
                     }
                 });
+
+                // Map to frontend expected structure
+                fetchpost = fetchpost.map(post => ({
+                    ...post,
+                    media_url: post.media[0]?.url,
+                    media_type: post.media[0]?.type,
+                    author: {
+                        id: post.creator.id,
+                        name: post.creator.name,
+                        image: post.creator.image,
+                        username: post.creator.creatorProfile?.username || "user"
+                    }
+                }));
 
                 await postCache.addPost(creatorPostCacheKey, fetchpost);
             }
@@ -223,7 +267,8 @@ export const fetchAllPost = catchAsync(
 
             res.status(200).json({
                 success: true,
-                message: "Posted fetched successfully"
+                message: "Posted fetched successfully",
+                data: fetchpost,
             })
         } catch (e) {
             console.error(`Error: ${e}`);
@@ -248,10 +293,41 @@ export const getFeedPost = catchAsync(
 
             if (!feedpost) {
                 feedpost = await client.post.findMany({
-                    take: 20
+                    take: 20,
+                    orderBy: {
+                        createdAt: 'desc'
+                    },
+                    include: {
+                        media: true,
+                        creator: {
+                            select: {
+                                id: true,
+                                name: true,
+                                image: true,
+                                creatorProfile: {
+                                    select: {
+                                        username: true
+                                    }
+                                }
+                            }
+                        }
+                    }
                 });
 
-                await postCache.addPost(feedCacheKey, feedpost)
+                // Map to frontend expected structure
+                feedpost = feedpost.map(post => ({
+                    ...post,
+                    media_url: post.media[0]?.url,
+                    media_type: post.media[0]?.type,
+                    author: {
+                        id: post.creator.id,
+                        name: post.creator.name,
+                        image: post.creator.image,
+                        username: post.creator.creatorProfile?.username || "user"
+                    }
+                }));
+
+                await postCache.addPost(feedCacheKey, feedpost);
             }
 
             if (!feedpost) {
@@ -260,13 +336,14 @@ export const getFeedPost = catchAsync(
 
             res.status(200).json({
                 success: true,
-                message: "Posted fetched successfully"
+                message: "Posted fetched successfully",
+                data: feedpost,
             })
         } catch (e) {
             console.error(`Error: ${e}`);
             res.status(500).json({
                 success: false,
-                message: "Failed to Update Profiles", e,
+                message: "Failed to fetch feed posts", e,
             });
         }
     }

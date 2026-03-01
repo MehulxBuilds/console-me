@@ -28,6 +28,12 @@ import {
 } from "lucide-react";
 import { useHomeUIStore } from "@/store/home-ui-store";
 import { useRouter } from "next/navigation";
+import { useMeQuery } from "@/hooks/use-me-query";
+import CreatePost from "@/components/post/create-post";
+import { useFeedPosts } from "@/hooks/use-feed-posts";
+import { useSuggestedCreators } from "@/hooks/use-suggested-creators";
+import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
 
 const navItems = [
   { label: "Home", icon: Home },
@@ -46,48 +52,22 @@ const trends = [
   "Fan requests surge after exclusive behind-the-scenes release",
 ];
 
-const posts = [
-  {
-    name: "Sydney Sweeney",
-    handle: "@sydney_sweeney",
-    time: "8m",
-    content: "Golden hour set photos from today. Which frame is your favorite?",
-    avatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSQEPRel3uekFvf20Kr1hx1zg8Wgj5GlM-SOg&s",
-    image:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlSqTu-gDPXC3nd5tSodRwghldakiI-K6Yzg&s",
-    comments: "3.2K",
-    reposts: "6.8K",
-    likes: "95K",
-    views: "2.1M",
-    tier: "VIP",
-  },
-  {
-    name: "Sydney Sweeney",
-    handle: "@sydney_sweeney",
-    time: "22m",
-    content: "BTS from the shoot. Love this look and the whole mood board.",
-    avatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSQEPRel3uekFvf20Kr1hx1zg8Wgj5GlM-SOg&s",
-    image:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSehPxpdele6hL8UmIP_h3UsD_Uj3_ajT6rBw&s",
-    comments: "2.8K",
-    reposts: "4.2K",
-    likes: "71K",
-    views: "1.6M",
-    tier: "Gold",
-  },
-];
+// Empty array to replace, we will use useFeedPosts now
+const posts: any[] = [];
 
 export default function HomePage() {
   const router = useRouter();
   const { activeNav, setActiveNav, closeProfile } = useHomeUIStore();
+  const { data: meData } = useMeQuery(true);
+  const { data: feedPosts, isLoading: feedLoading } = useFeedPosts();
+  const { data: suggestedCreators } = useSuggestedCreators();
 
   const onNavClick = (label: string) => {
     setActiveNav(label);
 
     if (label === "Profile") {
-      router.push("/creator");
+      const username = meData?.user?.username || meData?.user?.email?.split('@')[0] || 'user';
+      router.push(`/creator/${username}`);
       return;
     }
 
@@ -119,7 +99,13 @@ export default function HomePage() {
             );
           })}
         </nav>
-        <button className="mt-8 w-full rounded-full bg-white py-3 text-xl font-semibold text-black" type="button">
+        <button 
+          className="mt-8 w-full rounded-full bg-white py-3 text-xl font-semibold text-black" 
+          type="button"
+          onClick={() => {
+            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        >
           Post
         </button>
       </aside>
@@ -139,78 +125,97 @@ export default function HomePage() {
         <section className="border-b border-zinc-800 p-4">
           <div className="flex gap-3">
             <img
-              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"
+              src={meData?.user?.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"}
               alt="User avatar"
-              className="h-11 w-11 rounded-full object-cover"
+              className="h-11 w-11 rounded-full object-cover shrink-0"
             />
             <div className="flex-1">
-              <p className="text-3xl text-zinc-500">Share an exclusive drop...</p>
-              <div className="mt-6 flex items-center justify-between">
-                <div className="flex gap-3 text-sky-500">
-                  <ImageIcon className="h-5 w-5" />
-                  <Video className="h-5 w-5" />
-                  <SearchCheck className="h-5 w-5" />
-                  <ListFilter className="h-5 w-5" />
-                  <SmilePlus className="h-5 w-5" />
-                  <CirclePlus className="h-5 w-5" />
-                  <MapPin className="h-5 w-5" />
-                </div>
-                <button className="rounded-full bg-white px-6 py-2 font-semibold text-black" type="button">
-                  Post
-                </button>
-              </div>
+              <CreatePost />
             </div>
           </div>
         </section>
 
         <section>
-          {posts.map((post, index) => (
+          {feedLoading && (
+            <div className="flex justify-center p-8">
+              <p className="text-zinc-400">Loading your feed...</p>
+            </div>
+          )}
+
+          {!feedLoading && (!feedPosts || feedPosts.length === 0) && (
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <p className="text-xl font-bold text-white">Your feed is empty</p>
+              <p className="text-zinc-500">Follow creators or check back later for new content.</p>
+            </div>
+          )}
+
+          {feedPosts?.map((post, index) => (
             <article
-              key={`${post.handle}-${post.time}-${index}`}
+              key={post.id}
               className="border-b border-zinc-800 px-4 py-4 transition hover:bg-white/[0.02]"
             >
               <div className="flex gap-3">
-                <img
-                  src={post.avatar}
-                  alt={`${post.name} avatar`}
-                  className="h-12 w-12 rounded-full object-cover"
-                />
+                <Link href={`/creator/${post.author?.username || ''}`}>
+                  <img
+                    src={post.author?.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"}
+                    alt={`${post.author?.name || 'User'} avatar`}
+                    className="h-12 w-12 rounded-full object-cover transition-opacity hover:opacity-80 cursor-pointer"
+                  />
+                </Link>
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex items-center justify-between">
                     <div className="truncate">
-                      <span className="text-[17px] font-semibold">{post.name}</span>
-                      <span className="ml-2 text-sm text-zinc-400">{post.handle} - {post.time}</span>
-                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-0.5 text-xs text-sky-300">
-                        <Lock className="h-3 w-3" />
-                        {post.tier}
+                      <Link href={`/creator/${post.author?.username || ''}`} className="text-[17px] font-semibold hover:underline cursor-pointer">
+                        {post.author?.name || 'User'}
+                      </Link>
+                      <span className="ml-2 text-sm text-zinc-400">
+                        @{post.author?.username || 'user'} - {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
                       </span>
+                      {post.isLocked && (
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
+                          <Lock className="h-3 w-3" />
+                          Locked
+                        </span>
+                      )}
                     </div>
                     <Ellipsis className="h-5 w-5 text-zinc-500" />
                   </div>
-                  <p className="mb-3 text-[17px] leading-6 text-zinc-100">{post.content}</p>
-                  <div className="overflow-hidden rounded-2xl border border-zinc-800">
-                    <img
-                      src={post.image}
-                      alt={`${post.name} post ${index + 1}`}
-                      className="h-[320px] w-full object-cover"
-                    />
-                  </div>
+                  <p className="mb-3 text-[17px] leading-6 text-zinc-100">{post.caption}</p>
+                  
+                  {post.media_url && (
+                    <div className="overflow-hidden rounded-2xl border border-zinc-800">
+                      {post.media_type === "VIDEO" ? (
+                        <video 
+                          src={post.media_url} 
+                          className="h-[320px] w-full object-cover" 
+                          controls
+                        />
+                      ) : (
+                        <img 
+                          src={post.media_url} 
+                          alt={`Post by ${post.author.name}`} 
+                          className="h-[320px] w-full object-cover" 
+                        />
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-3 flex items-center justify-between text-zinc-500">
                     <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-sky-500/10 hover:text-sky-400" type="button">
                       <MessageCircle className="h-4 w-4" />
-                      <span className="text-xs">{post.comments}</span>
+                      <span className="text-xs">0</span>
                     </button>
                     <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-emerald-500/10 hover:text-emerald-400" type="button">
                       <Repeat2 className="h-4 w-4" />
-                      <span className="text-xs">{post.reposts}</span>
+                      <span className="text-xs">0</span>
                     </button>
                     <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-pink-500/10 hover:text-pink-400" type="button">
                       <Heart className="h-4 w-4" />
-                      <span className="text-xs">{post.likes}</span>
+                      <span className="text-xs">0</span>
                     </button>
                     <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-sky-500/10 hover:text-sky-400" type="button">
                       <BarChart3 className="h-4 w-4" />
-                      <span className="text-xs">{post.views}</span>
+                      <span className="text-xs">0</span>
                     </button>
                     <button className="rounded-full p-1 hover:bg-white/10 hover:text-white" type="button">
                       <Share className="h-4 w-4" />
@@ -226,17 +231,33 @@ export default function HomePage() {
       <aside className="no-scrollbar hidden h-screen overflow-y-auto px-5 py-4 xl:sticky xl:top-0 xl:block">
         <div className="mb-4 rounded-full border border-zinc-700 px-4 py-3 text-zinc-500">Search</div>
 
-        <div className="mb-4 rounded-2xl border border-zinc-800 p-5">
-          <h2 className="text-3xl font-bold">Sydney VIP</h2>
-          <p className="mt-3 text-zinc-300">Premium creator feed with subscriber-only drops and bonus bundles.</p>
-          <div className="mt-4 flex gap-2">
-            <button className="rounded-full bg-sky-500 px-6 py-2 font-semibold" type="button">
-              Subscribe $14.99
-            </button>
-            <button className="rounded-full border border-zinc-700 px-4 py-2 text-sm text-zinc-200" type="button">
-              Bundle
-            </button>
-          </div>
+        <div className="flex flex-col gap-4">
+          <h2 className="px-1 text-2xl font-bold">Suggested Creators</h2>
+          {suggestedCreators?.slice(0, 3).map((creator) => (
+            <div key={creator.id} className="rounded-2xl border border-zinc-800 p-4 transition hover:bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <img 
+                  src={creator.user.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"} 
+                  alt={creator.user.name} 
+                  className="h-12 w-12 rounded-full object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold">{creator.user.name}</p>
+                  <p className="truncate text-sm text-zinc-500">@{creator.user.username || 'creator'}</p>
+                </div>
+                <button className="rounded-full bg-white px-4 py-1.5 text-sm font-bold text-black hover:bg-zinc-200" type="button">
+                  View
+                </button>
+              </div>
+            </div>
+          ))}
+          
+          {(!suggestedCreators || suggestedCreators.length === 0) && (
+            <div className="rounded-2xl border border-zinc-800 p-5">
+              <h2 className="text-xl font-bold">Explore Content</h2>
+              <p className="mt-2 text-sm text-zinc-300">New creators are joining every day. Start following to see more!</p>
+            </div>
+          )}
         </div>
 
         <div className="mb-4 rounded-2xl border border-zinc-800 p-5">
