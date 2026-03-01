@@ -80,9 +80,11 @@ export default function ProfilePage() {
   const { data: meData, isLoading, isError } = useMeQuery(true);
 
   const profileName = meData?.user?.name || "Console Me User";
-  const profileHandle = meData?.user?.email
-    ? `@${meData.user.email.split("@")[0]}`
-    : "@console_user";
+  const profileHandle = meData?.user?.username
+    ? `@${meData.user.username}`
+    : meData?.user?.email
+      ? `@${meData.user.email.split("@")[0]}`
+      : "@console_user";
   const profileBio =
     meData?.user?.bio ||
     "Welcome to your profile. Add bio and content to personalize this page.";

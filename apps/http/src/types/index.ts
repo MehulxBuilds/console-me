@@ -2,11 +2,11 @@ import { MediaType } from "@repo/db/values";
 import { z } from "zod/v4";
 
 export const UsernameType = z.object({
-    username: z.string("Not a valid string").min(2).max(10),
+    username: z.string("Not a valid string").min(2).max(14),
 })
 
 export const CreatorProfileUpdate = z.object({
-    username: z.string("Not a valid string").min(2).max(10),
+    username: z.string("Not a valid string").min(2).max(14),
     subscriptionPrice: z.number("Not a valid number"),
     payoutEmail: z.email("Not a valid Email"),
 })
