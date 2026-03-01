@@ -121,7 +121,7 @@ async function startBroadcastConsumer() {
 
     await consumer.connect();
     await consumer.subscribe({
-        topics: [TOPICS.POST, TOPICS.DM_MESSAGES, TOPICS.NOTIFICATION],
+        topics: [TOPICS.DM_MESSAGES, TOPICS.NOTIFICATION],
         fromBeginning: false,
     });
 
@@ -134,11 +134,6 @@ async function startBroadcastConsumer() {
                 const data = JSON.parse(raw);
 
                 switch (topic) {
-                    case TOPICS.POST: {
-                        // Broadcast new posts to all connected clients
-                        io.emit("post:new", data);
-                        break;
-                    }
                     case TOPICS.DM_MESSAGES: {
                         const roomKey = `dm:${data.conversationId}`;
                         io.to(roomKey).emit("dm:message", data);
