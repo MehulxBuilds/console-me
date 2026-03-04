@@ -57,7 +57,7 @@ const posts: any[] = [];
 
 export default function HomePage() {
   const router = useRouter();
-  const { activeNav, setActiveNav, closeProfile } = useHomeUIStore();
+  const { activeNav, setActiveNav, closeProfile, setPostModalOpen } = useHomeUIStore();
   const { data: meData } = useMeQuery(true);
   const { data: feedPosts, isLoading: feedLoading } = useFeedPosts();
   const { data: suggestedCreators } = useSuggestedCreators();
@@ -100,11 +100,9 @@ export default function HomePage() {
           })}
         </nav>
         <button 
-          className="mt-8 w-full rounded-full bg-white py-3 text-xl font-semibold text-black" 
+          className="mt-8 w-full rounded-full bg-white py-3 text-xl font-semibold text-black hover:bg-zinc-200 transition-colors" 
           type="button"
-          onClick={() => {
-            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onClick={() => setPostModalOpen(true)}
         >
           Post
         </button>

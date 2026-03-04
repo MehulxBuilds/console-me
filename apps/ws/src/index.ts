@@ -135,8 +135,8 @@ async function startBroadcastConsumer() {
 
                 switch (topic) {
                     case TOPICS.DM_MESSAGES: {
-                        const roomKey = `dm:${data.conversationId}`;
-                        io.to(roomKey).emit("dm:message", data);
+                        io.to(`user:${data.senderId}`).emit("dm-message", data);
+                        io.to(`user:${data.receiverId}`).emit("dm-message", data);
                         break;
                     }
                     case TOPICS.NOTIFICATION: {

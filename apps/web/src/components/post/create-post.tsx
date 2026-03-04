@@ -1,22 +1,51 @@
-"use client";
-
 import React, { useState, useRef } from "react";
-import { Image as ImageIcon, Video, X, Lock, Unlock, DollarSign, Loader2 } from "lucide-react";
+import { 
+  Image as ImageIcon, 
+  Video, 
+  X, 
+  Lock, 
+  Unlock, 
+  DollarSign, 
+  Loader2, 
+  Smile, 
+  Calendar, 
+  MapPin, 
+  BarChart3, 
+  ChevronDown, 
+  Globe2, 
+  FileText
+} from "lucide-react";
 import { useCreatePost } from "@/hooks/use-create-post";
 import { generateReactHelpers } from "@uploadthing/react";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import { toast } from "sonner";
+import EmojiPicker, { Theme } from "emoji-picker-react";
+import { Grid } from "@giphy/react-components";
+import { GiphyFetch } from "@giphy/js-fetch-api";
+import { Popover, PopoverContent, PopoverTrigger } from "@repo/ui";
+import { useMeQuery } from "@/hooks/use-me-query";
+import { useHomeUIStore } from "@/store/home-ui-store";
 
 const { useUploadThing } = generateReactHelpers<OurFileRouter>();
+// Note: Replace with actual Giphy API key if available
+const gf = new GiphyFetch("sXp3Y96m9oKxdTirLYl93i91Xsc7Kshp");
 
-export default function CreatePost() {
+interface CreatePostProps {
+  isModal?: boolean;
+}
+
+export default function CreatePost({ isModal }: CreatePostProps) {
+  const { setPostModalOpen } = useHomeUIStore();
+  const { data: meData } = useMeQuery(true);
   const [caption, setCaption] = useState("");
   const [isLocked, setIsLocked] = useState(false);
   const [price, setPrice] = useState<number>(0);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [fileType, setFileType] = useState<"IMAGE" | "VIDEO" | null>(null);
+  const [fileType, setFileType] = useState<"IMAGE" | "VIDEO" | "GIF" | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
 
   React.useEffect(() => {
     setMounted(true);
@@ -39,13 +68,7 @@ export default function CreatePost() {
           price: isLocked ? price : undefined,
         });
 
-        // Reset state after success
-        setCaption("");
-        setIsLocked(false);
-        setPrice(0);
-        setFile(null);
-        setPreview(null);
-        setFileType(null);
+        resetState();
       }
     },
     onUploadError: (error: Error) => {
@@ -53,17 +76,41 @@ export default function CreatePost() {
     },
   });
 
+  const resetState = () => {
+    setCaption("");
+    setIsLocked(false);
+    setPrice(0);
+    setFile(null);
+    setPreview(null);
+    setFileType(null);
+    if (isModal) setPostModalOpen(false);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
       setPreview(URL.createObjectURL(selectedFile));
       setFileType(selectedFile.type.startsWith("video") ? "VIDEO" : "IMAGE");
+      setShowGifPicker(false);
     }
   };
 
+  const onEmojiClick = (emojiData: any) => {
+    setCaption((prev) => prev + emojiData.emoji);
+  };
+
+  const onGifClick = (gif: any) => {
+    // Use the original or downsized_medium for better quality/compatibility
+    const gifUrl = gif.images.downsized_medium.url || gif.images.original.url;
+    setPreview(gifUrl);
+    setFileType("GIF"); 
+    setFile(null); 
+    setShowGifPicker(false);
+  };
+
   const handlePost = async () => {
-    if (!caption.trim() && !file) {
+    if (!caption.trim() && !file && !preview) {
       toast.error("Please add a caption or media.");
       return;
     }
@@ -73,14 +120,13 @@ export default function CreatePost() {
     } else {
       await postMutation.mutateAsync({
         caption,
+        media_url: preview || undefined,
+        media_type: fileType || undefined,
         isLocked,
         price: isLocked ? price : undefined,
       });
 
-      // Reset state for text-only post
-      setCaption("");
-      setIsLocked(false);
-      setPrice(0);
+      resetState();
     }
   };
 
@@ -97,10 +143,23 @@ export default function CreatePost() {
 
   return (
     <div className="flex gap-4">
+      {isModal && (
+        <img
+          src={meData?.user?.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"}
+          alt="User avatar"
+          className="h-11 w-11 rounded-full object-cover shrink-0"
+        />
+      )}
       <div className="flex-1">
+        {isModal && (
+          <button className="mb-4 flex items-center gap-1 rounded-full border border-sky-500/50 px-3 py-0.5 text-sm font-semibold text-sky-500 hover:bg-sky-500/10 transition">
+            Everyone <ChevronDown className="h-4 w-4" />
+          </button>
+        )}
+        
         <textarea
-          placeholder="Share an exclusive drop..."
-          className="w-full bg-transparent text-2xl text-white outline-none placeholder:text-zinc-500 resize-none min-h-[100px]"
+          placeholder="What's happening?"
+          className={`w-full bg-transparent text-xl text-white outline-none placeholder:text-zinc-500 resize-none ${isModal ? "min-h-[120px]" : "min-h-[100px]"}`}
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
           disabled={isPending}
@@ -110,12 +169,12 @@ export default function CreatePost() {
           <div className="relative mt-4 group">
             <button
               onClick={removeMedia}
-              className="absolute right-2 top-2 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 transition"
+              className="absolute left-2 top-2 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 transition"
               disabled={isPending}
             >
               <X className="h-4 w-4" />
             </button>
-            {fileType === "IMAGE" ? (
+            {fileType === "IMAGE" || fileType === "GIF" ? (
               <img
                 src={preview}
                 alt="Upload preview"
@@ -131,8 +190,15 @@ export default function CreatePost() {
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        {isModal && (
+          <div className="mt-4 flex items-center gap-2 text-sky-500 text-sm font-semibold border-b border-zinc-800 pb-4">
+            <Globe2 className="h-4 w-4" />
+            Everyone can reply
+          </div>
+        )}
+
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex items-center gap-1">
             <input
               type="file"
               accept="image/*,video/*"
@@ -143,31 +209,72 @@ export default function CreatePost() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="group flex items-center gap-2 text-sky-500 hover:opacity-80 transition"
+              className="p-2 text-sky-500 hover:bg-sky-500/10 rounded-full transition"
               disabled={isPending}
+              title="Media"
             >
               <ImageIcon className="h-5 w-5" />
-              <span className="hidden sm:inline text-sm font-medium">Image</span>
             </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="group flex items-center gap-2 text-sky-500 hover:opacity-80 transition"
-              disabled={isPending}
-            >
-              <Video className="h-5 w-5" />
-              <span className="hidden sm:inline text-sm font-medium">Video</span>
+            <Popover open={showGifPicker} onOpenChange={setShowGifPicker}>
+              <PopoverTrigger asChild>
+                <button
+                  className="p-2 text-sky-500 hover:bg-sky-500/10 rounded-full transition"
+                  disabled={isPending}
+                  title="GIF"
+                >
+                  <span className="text-xs font-bold border border-sky-500 rounded-sm px-0.5">GIF</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0 bg-black border-zinc-800" side="bottom" align="start">
+                <div className="h-[400px] overflow-y-auto p-2 no-scrollbar">
+                  <Grid
+                    width={280}
+                    columns={2}
+                    fetchGifs={(offset) => gf.trending({ offset, limit: 10 })}
+                    onGifClick={onGifClick}
+                    noLink
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
+            <button className="p-2 text-sky-500 hover:bg-sky-500/10 rounded-full transition" disabled={isPending} title="Poll">
+              <BarChart3 className="h-5 w-5" />
+            </button>
+            <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+              <PopoverTrigger asChild>
+                <button
+                  className="p-2 text-sky-500 hover:bg-sky-500/10 rounded-full transition"
+                  disabled={isPending}
+                  title="Emoji"
+                >
+                  <Smile className="h-5 w-5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 border-none bg-transparent" side="bottom" align="start">
+                <EmojiPicker 
+                  onEmojiClick={onEmojiClick} 
+                  theme={Theme.DARK}
+                  width={300}
+                  height={400}
+                />
+              </PopoverContent>
+            </Popover>
+            <button className="p-2 text-sky-500 hover:bg-sky-500/10 rounded-full transition" disabled={isPending} title="Schedule">
+              <Calendar className="h-5 w-5" />
+            </button>
+            <button className="p-2 text-sky-500 hover:bg-sky-500/10 rounded-full transition" disabled={isPending} title="Location">
+              <MapPin className="h-5 w-5" />
             </button>
 
             <div className="h-4 w-[1px] bg-zinc-800 mx-1" />
 
             <button
               onClick={() => setIsLocked(!isLocked)}
-              className={`flex items-center gap-2 transition ${isLocked ? "text-amber-500" : "text-zinc-500 hover:text-white"}`}
+              className={`p-2 transition rounded-full hover:bg-zinc-800 ${isLocked ? "text-amber-500" : "text-sky-500"}`}
               disabled={isPending}
-              title={isLocked ? "Sensitive content locked" : "Content public"}
+              title={isLocked ? "Locked" : "Public"}
             >
               {isLocked ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
-              <span className="hidden sm:inline text-sm font-medium">{isLocked ? "Locked" : "Public"}</span>
             </button>
 
             {isLocked && (
@@ -189,14 +296,11 @@ export default function CreatePost() {
 
           <button
             onClick={handlePost}
-            disabled={isPending || (!caption.trim() && !file)}
-            className="flex items-center gap-2 rounded-full bg-white px-8 py-2.5 font-bold text-black transition hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+            disabled={isPending || (!caption.trim() && !file && !preview)}
+            className="flex items-center gap-2 rounded-full bg-white px-6 py-2 font-bold text-black transition hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Posting...</span>
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               "Post"
             )}
