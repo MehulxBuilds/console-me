@@ -116,12 +116,12 @@ let consumer: Consumer | null = null;
 
 async function startBroadcastConsumer() {
     consumer = kafka.consumer({
-        groupId: `socket-broadcaster-${NODE_ID}`,
+        groupId: `socket-broadcaster`,
     });
 
     await consumer.connect();
     await consumer.subscribe({
-        topics: [TOPICS.DM_MESSAGES, TOPICS.NOTIFICATION],
+        topics: [TOPICS.DM_MESSAGES, TOPICS.NOTIFICATION, TOPICS.POST],
         fromBeginning: false,
     });
 
@@ -143,6 +143,13 @@ async function startBroadcastConsumer() {
                         // Route to the specific user
                         if (data.userId) {
                             io.to(`user:${data.userId}`).emit("notification:new", data);
+                        }
+                        break;
+                    }
+                    case TOPICS.POST: {
+                        // Route to the specific user
+                        if (data.creatorId) {
+                            io.to(`user:${data.creatorId}`).emit("posts:new", data);
                         }
                         break;
                     }

@@ -119,35 +119,26 @@ export const sendMessage = catchAsync(
     async (req: AuthRequest, res: Response) => {
         try {
             const senderId = req.userId!;
-            const { receiverId, content, isLocked, price } = req.body;
+            const { receiverId, content } = req.body;
 
             if (!receiverId || !content) {
                 throw new AppError("Receiver ID and content are required", 400);
             }
 
-            const message = await client.message.create({
-                data: {
-                    senderId,
-                    receiverId,
-                    content,
-                    isLocked: isLocked || false,
-                    price: price || 0,
-                    isRead: false
-                }
-            });
-
+            const messageId = crypto.randomUUID();;
             // conversationId logic to match WS expectations (string combination)
             const conversationId = [senderId, receiverId].sort().join('-');
+            let kafkaMessage;
 
             try {
                 // Publish to Kafka for real-time delivery via WebSockets
-                const kafkaMessage = {
-                    id: message.id,
+                kafkaMessage = {
+                    id: messageId,
                     conversationId,
                     senderId,
                     receiverId,
-                    content: message.content || "",
-                    createdAt: message.createdAt,
+                    content: content || "",
+                    createdAt: new Date(),
                 };
                 await getProducer().publishDMChatMessage(kafkaMessage);
             } catch (err) {
@@ -156,7 +147,7 @@ export const sendMessage = catchAsync(
 
             res.status(201).json({
                 success: true,
-                data: message
+                data: kafkaMessage,
             });
         } catch (e: any) {
             res.status(500).json({ success: false, message: e.message || "Failed to send message", error: e });

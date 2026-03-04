@@ -21,6 +21,7 @@ const fetchUserSearch = async (query: string): Promise<SearchUser[]> => {
     }
 
     const result = await response.json();
+    console.log(result)
     return result.data || [];
 };
 

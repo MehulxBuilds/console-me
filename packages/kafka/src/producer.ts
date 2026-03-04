@@ -32,8 +32,8 @@ export interface PostMessage {
     price?: Number,
     createdAt: Date;
     updatedAt: Date;
-    media_url: string;
-    media_type: string;
+    media_url?: string;
+    media_type?: string;
 }
 
 export interface DMChatMessage {

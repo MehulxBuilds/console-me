@@ -157,20 +157,16 @@ export const searchUsers = catchAsync(
     async (req: AuthRequest, res: Response) => {
         try {
             const query = req.query.q as string;
+
             if (!query) {
                 return res.status(200).json({ success: true, data: [] });
             }
 
             const users = await client.user.findMany({
                 where: {
-                    OR: [
-                        { name: { contains: query, mode: "insensitive" } },
-                        {
-                            creatorProfile: {
-                                username: { contains: query, mode: "insensitive" }
-                            }
-                        }
-                    ],
+                    creatorProfile: {
+                        username: query,
+                    },
                     id: { not: req.userId } // Don't return self
                 },
                 select: {
@@ -187,12 +183,7 @@ export const searchUsers = catchAsync(
             });
 
             // Map the result to match the expected frontend interface
-            const formattedUsers = users.map(u => ({
-                id: u.id,
-                name: u.name,
-                image: u.image,
-                username: u.creatorProfile?.username || "" // Fallback if no creator profile
-            }));
+            const formattedUsers = users;
 
             res.status(200).json({ success: true, data: formattedUsers });
         } catch (e: any) {

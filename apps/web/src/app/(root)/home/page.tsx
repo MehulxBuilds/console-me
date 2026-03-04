@@ -34,6 +34,10 @@ import { useFeedPosts } from "@/hooks/use-feed-posts";
 import { useSuggestedCreators } from "@/hooks/use-suggested-creators";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { useSocket } from "@/hooks/use-socket";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import type { PostData } from "@/hooks/use-creator-posts";
 
 const navItems = [
   { label: "Home", icon: Home },
@@ -61,6 +65,8 @@ export default function HomePage() {
   const { data: meData } = useMeQuery(true);
   const { data: feedPosts, isLoading: feedLoading } = useFeedPosts();
   const { data: suggestedCreators } = useSuggestedCreators();
+  const { socket, isConnected } = useSocket();
+  const queryClient = useQueryClient();
 
   const onNavClick = (label: string) => {
     setActiveNav(label);
@@ -74,6 +80,38 @@ export default function HomePage() {
     closeProfile();
   };
 
+  useEffect(() => {
+    if (!socket || !meData?.user) return;
+
+    const handler = (data: any) => {
+      const newPost: PostData = {
+        id: data.id,
+        caption: data.caption,
+        media_url: data.media_url,
+        media_type: data.media_type,
+        isLocked: data.isLocked ?? false,
+        price: data.price ?? null,
+        createdAt: data.createdAt,
+        author: {
+          id: meData.user.id,
+          name: meData.user.name,
+          image: meData.user.image ?? null,
+          username: meData.user.username ?? "user",
+        },
+      };
+
+      queryClient.setQueryData<PostData[]>(["feed", "all"], (old) =>
+        old ? [newPost, ...old] : [newPost]
+      );
+    };
+
+    socket.on("posts:new", handler);
+
+    return () => {
+      socket.off("posts:new", handler);
+    };
+  }, [socket, queryClient, meData]);
+
   return (
     <div className="grid h-screen grid-cols-1 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)_360px]">
       <aside className="no-scrollbar hidden h-screen overflow-y-auto border-r border-zinc-800 px-5 py-6 lg:sticky lg:top-0 lg:block">
@@ -85,11 +123,10 @@ export default function HomePage() {
             return (
               <button
                 key={item.label}
-                className={`flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-xl transition ${
-                  isActive
-                    ? "bg-white/10 font-semibold"
-                    : "text-zinc-300 hover:bg-white/10 hover:text-white"
-                }`}
+                className={`flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-xl transition ${isActive
+                  ? "bg-white/10 font-semibold"
+                  : "text-zinc-300 hover:bg-white/10 hover:text-white"
+                  }`}
                 onClick={() => onNavClick(item.label)}
                 type="button"
               >
@@ -99,8 +136,8 @@ export default function HomePage() {
             );
           })}
         </nav>
-        <button 
-          className="mt-8 w-full rounded-full bg-white py-3 text-xl font-semibold text-black hover:bg-zinc-200 transition-colors" 
+        <button
+          className="mt-8 w-full rounded-full bg-white py-3 text-xl font-semibold text-black hover:bg-zinc-200 transition-colors"
           type="button"
           onClick={() => setPostModalOpen(true)}
         >
@@ -179,20 +216,20 @@ export default function HomePage() {
                     <Ellipsis className="h-5 w-5 text-zinc-500" />
                   </div>
                   <p className="mb-3 text-[17px] leading-6 text-zinc-100">{post.caption}</p>
-                  
+
                   {post.media_url && (
                     <div className="overflow-hidden rounded-2xl border border-zinc-800">
                       {post.media_type === "VIDEO" ? (
-                        <video 
-                          src={post.media_url} 
-                          className="h-[320px] w-full object-cover" 
+                        <video
+                          src={post.media_url}
+                          className="h-[320px] w-full object-cover"
                           controls
                         />
                       ) : (
-                        <img 
-                          src={post.media_url} 
-                          alt={`Post by ${post.author.name}`} 
-                          className="h-[320px] w-full object-cover" 
+                        <img
+                          src={post.media_url}
+                          alt={`Post by ${post.author.name}`}
+                          className="h-[320px] w-full object-cover"
                         />
                       )}
                     </div>
@@ -234,9 +271,9 @@ export default function HomePage() {
           {suggestedCreators?.slice(0, 3).map((creator) => (
             <div key={creator.id} className="rounded-2xl border border-zinc-800 p-4 transition hover:bg-white/[0.02]">
               <div className="flex items-center gap-3">
-                <img 
-                  src={creator.user.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"} 
-                  alt={creator.user.name} 
+                <img
+                  src={creator.user.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"}
+                  alt={creator.user.name}
                   className="h-12 w-12 rounded-full object-cover"
                 />
                 <div className="min-w-0 flex-1">
@@ -249,7 +286,7 @@ export default function HomePage() {
               </div>
             </div>
           ))}
-          
+
           {(!suggestedCreators || suggestedCreators.length === 0) && (
             <div className="rounded-2xl border border-zinc-800 p-5">
               <h2 className="text-xl font-bold">Explore Content</h2>

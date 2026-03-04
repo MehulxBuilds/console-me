@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useHomeUIStore } from "@/store/home-ui-store";
-import { useConversations, useMessageHistory, useSendMessage } from "@/hooks/use-chat";
+import { useConversations, useMessageHistory, useSendMessage, type ChatMessage, type Conversation } from "@/hooks/use-chat";
 import { useSocket } from "@/hooks/use-socket";
 import { useMeQuery } from "@/hooks/use-me-query";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,7 +21,7 @@ const navItems = [
     { label: "Messages", icon: Mail },
     { label: "Bookmarks", icon: Bookmark },
     { label: "Profile", icon: UserRound },
-    { label: "More", icon: MoreHorizontal },
+    { label: "More", icon: MoreHorizontal }
 ];
 
 export default function ChatPage() {
@@ -31,7 +31,7 @@ export default function ChatPage() {
 
     const { activeNav, setActiveNav, closeProfile, setPostModalOpen, setChatPopoverOpen } = useHomeUIStore();
     const { data: meData } = useMeQuery(true);
-    
+
     // Make sure we close the popover if we are on the full chat page
     useEffect(() => {
         setChatPopoverOpen(false);
@@ -49,6 +49,50 @@ export default function ChatPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const { socket, isConnected } = useSocket();
     const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (!socket || !meData?.user) return;
+
+        const handleDmMessage = (data: any) => {
+            const newMsg: ChatMessage = {
+                id: data.id,
+                senderId: data.senderId,
+                receiverId: data.receiverId,
+                content: data.content,
+                isLocked: data.isLocked ?? false,
+                price: data.price ?? null,
+                isRead: false,
+                createdAt: data.createdAt,
+            };
+
+            const otherUserId = data.senderId === meData.user.id
+                ? data.receiverId
+                : data.senderId;
+
+            queryClient.setQueryData<ChatMessage[]>(
+                ["chat", "history", otherUserId],
+                (old) => old ? [...old, newMsg] : [newMsg]
+            );
+
+            queryClient.setQueryData<Conversation[]>(
+                ["chat", "conversations"],
+                (old) => {
+                    if (!old) return old;
+                    return old.map((conv) =>
+                        conv.user.id === otherUserId
+                            ? { ...conv, lastMessage: data.content, lastMessageAt: data.createdAt }
+                            : conv
+                    );
+                }
+            );
+        };
+
+        socket.on("dm-message", handleDmMessage);
+
+        return () => {
+            socket.off("dm-message", handleDmMessage);
+        };
+    }, [socket, queryClient, meData]);
 
     useEffect(() => {
         if (initialUserId) {
@@ -79,7 +123,7 @@ export default function ChatPage() {
 
     const handleSend = () => {
         if (!newMessage.trim() || !selectedUserId) return;
-        
+
         sendMessage({ receiverId: selectedUserId, content: newMessage });
         setNewMessage("");
     };
@@ -93,16 +137,16 @@ export default function ChatPage() {
 
     const activeConversation = conversations?.find(c => c.user.id === selectedUserId);
     const activeSearchContact = searchResults?.find(u => u.id === selectedUserId);
-    
+
     // Check if we need to manually fetch the profile (e.g., coming directly from creator profile with no chat history)
     const needsFetch = selectedUserId && !activeConversation && !activeSearchContact;
     const { data: fetchedUser } = useUserById(needsFetch ? selectedUserId : null);
-    
+
     // Profile info to display for the active chat header
     const activeProfile = activeConversation?.user || activeSearchContact || fetchedUser;
 
     let displayConversations = conversations || [];
-    
+
     // If we are starting a brand new conversation from a profile link, inject them at the top
     if (fetchedUser && !activeConversation) {
         displayConversations = [
@@ -116,13 +160,13 @@ export default function ChatPage() {
         ];
     }
 
-    const filteredConversations = displayConversations.filter(c => 
-        c.user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const filteredConversations = displayConversations.filter(c =>
+        c.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.user.username.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const isSearching = searchQuery.trim().length > 0;
-    
+
     const newContacts = searchResults?.filter(
         su => !filteredConversations.find(c => c.user.id === su.id)
     ) || [];
@@ -130,8 +174,9 @@ export default function ChatPage() {
     return (
         <div className="grid h-screen grid-cols-1 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)_400px]">
             {/* Left Nav (Reused from Home) */}
-            <aside className="no-scrollbar hidden h-screen overflow-y-auto border-r border-zinc-800 px-5 py-6 lg:sticky lg:top-0 lg:block">
-                <div className="mb-8 text-3xl font-semibold tracking-tight">Console Me</div>
+            <aside className="no-scrollbar hidden h-screen overflow-y-auto border-r border-zinc-800 px-5 py-6 lg:sticky lg:top-0 lg:block bg-black">
+                <div className="mb-8 text-3xl font-semibold tracking-tight text-white
+                z-10">Console Me</div>
                 <nav className="space-y-2">
                     {navItems.map((item) => {
                         const isActive = item.label === "Messages";
@@ -139,8 +184,8 @@ export default function ChatPage() {
                             <button
                                 key={item.label}
                                 className={`flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-xl transition ${isActive
-                                        ? "bg-white/10 font-semibold"
-                                        : "text-zinc-300 hover:bg-white/10 hover:text-white"
+                                    ? "bg-white font-semibold"
+                                    : "text-zinc-300 hover:bg-white/10 hover:text-white"
                                     }`}
                                 onClick={() => onNavClick(item.label)}
                                 type="button"
@@ -197,7 +242,7 @@ export default function ChatPage() {
                             <p className="text-zinc-500 mb-6 border-b border-zinc-800 pb-8">Drop a line, share posts and more with private conversations between you and others.</p>
                         </div>
                     )}
-                    
+
                     {!convLoading && isSearching && filteredConversations.length === 0 && newContacts.length === 0 && !searchLoading && (
                         <div className="p-8 text-center">
                             <p className="text-zinc-500">No results found for "{searchQuery}"</p>
@@ -279,8 +324,8 @@ export default function ChatPage() {
                             <div className="flex items-center gap-3">
                                 {activeProfile && (
                                     <>
-                                        <img 
-                                            src={activeProfile.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"} 
+                                        <img
+                                            src={activeProfile.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"}
                                             className="w-10 h-10 rounded-full object-cover"
                                             alt={activeProfile.name}
                                         />
@@ -301,11 +346,11 @@ export default function ChatPage() {
                         {/* Messages Area */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
                             {messagesLoading && <div className="text-center text-zinc-500">Loading messages...</div>}
-                            
+
                             {messages?.map((msg, idx) => {
                                 const isMe = msg.senderId === meData?.user?.id;
-                                const showTimestamp = idx === 0 || 
-                                    (new Date(msg.createdAt).getTime() - new Date(messages[idx-1].createdAt).getTime() > 1000 * 60 * 60);
+                                const showTimestamp = idx === 0 ||
+                                    (new Date(msg.createdAt).getTime() - new Date(messages[idx - 1].createdAt).getTime() > 1000 * 60 * 60);
 
                                 return (
                                     <div key={msg.id}>
@@ -317,11 +362,10 @@ export default function ChatPage() {
                                             </div>
                                         )}
                                         <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                                                isMe 
-                                                    ? 'bg-sky-500 text-white rounded-br-sm' 
+                                            <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMe
+                                                    ? 'bg-sky-500 text-white rounded-br-sm'
                                                     : 'bg-zinc-800 border border-zinc-700 text-white rounded-bl-sm'
-                                            }`}>
+                                                }`}>
                                                 <p className="whitespace-pre-wrap">{msg.content}</p>
                                             </div>
                                         </div>

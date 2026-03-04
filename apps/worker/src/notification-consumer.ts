@@ -47,7 +47,7 @@ export class NotificationConsumer {
                 }: EachBatchPayload) => {
                     const messages = batch.messages;
                     const batchSize = 500;
-                    const flushInterval = 10000;
+                    const flushInterval = 3000;
 
                     console.log(
                         `PostConsumer received ${messages.length} messages from Kafka`,
@@ -139,10 +139,6 @@ export class NotificationConsumer {
         }));
 
         try {
-            await client.notification.createMany({
-                data: posts,
-                skipDuplicates: true,
-            });
 
             const duration = Date.now() - startTime;
             console.log(`✅ Post batch persisted: ${posts.length} posts (${duration}ms)`);
@@ -153,12 +149,17 @@ export class NotificationConsumer {
             for (const msg of posts) {
                 // Invalidate the "initial" page (latest messages)
                 const key = `notification:${msg.userId}:initial`;
-                
+
                 if (!invalidatedKeys.has(key)) {
                     await NotificationCache.invalidateNotification(key);
                     invalidatedKeys.add(key);
                 }
             }
+
+            await client.notification.createMany({
+                data: posts,
+                skipDuplicates: true,
+            });
 
         } catch (e) {
             console.error(
@@ -193,7 +194,7 @@ export class NotificationConsumer {
             let totalLag = 0;
             const groupOffsets = await admin.fetchOffsets({
                 groupId: "post-processor",
-                topics: [TOPICS.POST],
+                topics: [TOPICS.NOTIFICATION],
             });
 
             for (const topicOffset of groupOffsets) {
