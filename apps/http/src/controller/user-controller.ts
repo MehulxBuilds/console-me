@@ -122,6 +122,76 @@ export const checkAvailaible = catchAsync(
     }
 );
 
+export const fetchUserById = catchAsync(
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const user = await client.user.findUnique({
+                where: { id: req.params.id as string },
+                select: {
+                    id: true,
+                    name: true,
+                    image: true,
+                    creatorProfile: { select: { username: true } }
+                }
+            });
+
+            if (!user) {
+                return res.status(404).json({ success: false, message: "User not found" });
+            }
+
+            const formattedUser = {
+                id: user.id,
+                name: user.name,
+                image: user.image,
+                username: user.creatorProfile?.username || ""
+            };
+
+            res.status(200).json({ success: true, data: formattedUser });
+        } catch (e: any) {
+            res.status(500).json({ success: false, message: e.message || "Failed to fetch user", error: e });
+        }
+    }
+);
+
+export const searchUsers = catchAsync(
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const query = req.query.q as string;
+
+            if (!query) {
+                return res.status(200).json({ success: true, data: [] });
+            }
+
+            const users = await client.user.findMany({
+                where: {
+                    creatorProfile: {
+                        username: query,
+                    },
+                    id: { not: req.userId } // Don't return self
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    image: true,
+                    creatorProfile: {
+                        select: {
+                            username: true
+                        }
+                    }
+                },
+                take: 10
+            });
+
+            // Map the result to match the expected frontend interface
+            const formattedUsers = users;
+
+            res.status(200).json({ success: true, data: formattedUsers });
+        } catch (e: any) {
+            res.status(500).json({ success: false, message: e.message || "Failed to search users", error: e });
+        }
+    }
+);
+
 export const deleteUserProfile = catchAsync(
     async (req: AuthRequest, res: Response) => {
         try {

@@ -9,6 +9,10 @@ import postRoutes from "./routes/post-routes";
 import creatorRoutes from "./routes/creator-routes";
 import userRoutes from "./routes/user-routes";
 import notificationRoutes from "./routes/notification-routes";
+import subscriptionRoutes from "./routes/subscription-routes";
+import messageRoutes from "./routes/message-routes";
+import likeRoutes from "./routes/like-routes";
+import followRoutes from "./routes/follow-routes";
 
 const app = express();
 
@@ -49,6 +53,10 @@ app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/post", postRoutes);
 app.use('/api/v1/creator', creatorRoutes);
 app.use('/api/v1/notification', notificationRoutes);
+app.use('/api/v1/subscription', subscriptionRoutes);
+app.use('/api/v1/message', messageRoutes);
+app.use('/api/v1/like', likeRoutes);
+app.use('/api/v1/follow', followRoutes);
 
 app.listen(5000, async () => {
     await client.$connect();

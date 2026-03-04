@@ -32,12 +32,17 @@ export interface PostMessage {
     price?: Number,
     createdAt: Date;
     updatedAt: Date;
-    media_url: string;
-    media_type: string;
+    media_url?: string;
+    media_type?: string;
 }
 
 export interface DMChatMessage {
-    id: string
+    id: string;
+    conversationId: string;
+    senderId: string;
+    receiverId: string;
+    content: string;
+    createdAt: Date;
 }
 
 export interface AccountcheckReport {
@@ -140,7 +145,7 @@ export class MessageProducer {
             throw error;
         }
     }
-    
+
     async publishAccountCheckReport(message: AccountcheckReport): Promise<string> {
         await this.connect();
 

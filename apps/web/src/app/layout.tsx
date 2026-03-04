@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "./providers";
+import PostModal from "@/components/post/post-modal";
+import FloatingActions from "@/components/chat/floating-actions";
+import ChatPopover from "@/components/chat/chat-popover";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,9 +27,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning
+    >
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <AppProviders>{children}</AppProviders>
+        <AppProviders>
+          {children}
+          <PostModal />
+          <FloatingActions />
+          <ChatPopover />
+        </AppProviders>
       </body>
     </html>
   );

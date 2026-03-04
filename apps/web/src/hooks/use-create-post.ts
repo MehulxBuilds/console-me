@@ -37,7 +37,8 @@ export const useCreatePost = () => {
             toast.success("Post created successfully!");
             // Invalidate posts queries to refresh the feed/profile
             queryClient.invalidateQueries({ queryKey: ["posts"] });
-            queryClient.invalidateQueries({ queryKey: ["feed"] });
+            // queryClient.invalidateQueries({ queryKey: ["feed"] });
+            // queryClient.invalidateQueries({ queryKey: ["feed", "all"] });
         },
         onError: (error: Error) => {
             toast.error(error.message);

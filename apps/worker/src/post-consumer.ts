@@ -11,8 +11,8 @@ export interface PostMessage {
     price?: number;
     createdAt: Date;
     updatedAt: Date;
-    media_url: string;
-    media_type: string;
+    media_url?: string;
+    media_type?: string;
 }
 
 export class PostConsumer {
@@ -47,7 +47,7 @@ export class PostConsumer {
                 }: EachBatchPayload) => {
                     const messages = batch.messages;
                     const batchSize = 500;
-                    const flushInterval = 10000;
+                    const flushInterval = 3000;
 
                     console.log(
                         `PostConsumer received ${messages.length} messages from Kafka`,
@@ -139,25 +139,8 @@ export class PostConsumer {
         }));
 
         try {
-            await client.$transaction(
-                messages.map((msg) =>
-                    client.post.create({
-                        data: {
-                            caption: msg.caption,
-                            isLocked: msg.isLocked,
-                            creatorId: msg.creatorId,
-                            price: msg.price,
-                            media: {
-                                create: {
-                                    url: msg.media_url,
-                                    type: msg.media_type as any,
-                                }
-                            }
-                        },
-                    })
-                )
-            );
 
+            // have cache first
             const duration = Date.now() - startTime;
             console.log(`✅ Post batch persisted: ${posts.length} posts (${duration}ms)`);
 
@@ -175,6 +158,27 @@ export class PostConsumer {
 
             // Invalidate feed caches for users so they see fresh posts
             await postCache.invalidateByPattern("feed:*:initial");
+
+
+            // Then push to db
+            await client.$transaction(
+                messages.map((msg) =>
+                    client.post.create({
+                        data: {
+                            caption: msg.caption,
+                            isLocked: msg.isLocked,
+                            creatorId: msg.creatorId,
+                            price: msg.price,
+                            media: {
+                                create: {
+                                    url: msg.media_url!,
+                                    type: msg.media_type as any,
+                                }
+                            }
+                        },
+                    })
+                )
+            );
 
         } catch (e) {
             console.error(

@@ -22,23 +22,23 @@ export const createPost = catchAsync(
             const postId = crypto.randomUUID();
             const noftificationId = crypto.randomUUID();
 
-            const create = await client.post.create({
-                data: {
-                    id: postId,
-                    caption: data.caption || "",
-                    isLocked: data.isLocked || false,
-                    creatorId: userId!, // Use User ID to match schema
-                    price: data.price || 0,
-                    ...(data.media_url && data.media_type ? {
-                        media: {
-                            create: {
-                                url: data.media_url,
-                                type: data.media_type,
-                            }
-                        }
-                    } : {})
-                }
-            });
+            // const create = await client.post.create({
+            //     data: {
+            //         id: postId,
+            //         caption: data.caption || "",
+            //         isLocked: data.isLocked || false,
+            //         creatorId: userId!, // Use User ID to match schema
+            //         price: data.price || 0,
+            //         ...(data.media_url && data.media_type ? {
+            //             media: {
+            //                 create: {
+            //                     url: data.media_url,
+            //                     type: data.media_type,
+            //                 }
+            //             }
+            //         } : {})
+            //     }
+            // });
 
             const username = await client.creatorProfile.findUnique({
                 where: {
@@ -54,6 +54,18 @@ export const createPost = catchAsync(
 
             // Still publish to Kafka for notifications and other services if needed
             try {
+                const create = getProducer().publishPost({
+                    id: postId,
+                    isLocked: data?.isLocked ?? false,
+                    caption: data.caption,
+                    createdAt: new Date(),
+                    creatorId: userId ?? "",
+                    price: data.price,
+                    updatedAt: new Date(),
+                    media_type: data?.media_type!,
+                    media_url: data?.media_url!,
+                })
+
                 await getProducer().publishNotification({
                     id: noftificationId,
                     createdAt: new Date(),
@@ -73,7 +85,7 @@ export const createPost = catchAsync(
                 success: true,
                 message: "Posted successfully",
                 postId: postId,
-                data: create
+                data: {},
             });
 
         } catch (e) {

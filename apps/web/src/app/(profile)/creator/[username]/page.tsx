@@ -24,8 +24,8 @@ import { useHomeUIStore } from "@/store/home-ui-store";
 import { useRouter } from "next/navigation";
 import { useCreatorPosts } from "@/hooks/use-creator-posts";
 import { useCreatorByUsername } from "@/hooks/use-creator-by-username";
+import { useSubscription, useToggleSubscription } from "@/hooks/use-subscription";
 import { formatDistanceToNow } from "date-fns";
-import { use } from "react";
 
 const navItems = [
   { label: "Home", icon: Home },
@@ -58,11 +58,12 @@ function formatJoinedDate(createdAt?: string) {
   })}`;
 }
 
-export default function DynamicProfilePage(props: { params: Promise<{ username: string }> }) {
-  const params = use(props.params);
+import React from "react";
+
+export default function DynamicProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = React.use(params);
   const router = useRouter();
-  const { activeNav, setActiveNav } = useHomeUIStore();
-  const { username } = params;
+  const { activeNav, setActiveNav, setChatPopoverOpen } = useHomeUIStore();
   
   // Fetch dynamic creator data
   const { data: creatorData, isLoading, isError } = useCreatorByUsername(username);
@@ -70,6 +71,8 @@ export default function DynamicProfilePage(props: { params: Promise<{ username: 
 
   const creatorId = creatorData?.userId;
   const { data: realPosts, isLoading: postsLoading } = useCreatorPosts(creatorId || undefined);
+  const { data: isSubscribed, isLoading: subLoading } = useSubscription(creatorId || undefined);
+  const { mutate: toggleSub, isPending: subPending } = useToggleSubscription();
 
   const isOwner = meData?.user?.username === username;
 
@@ -94,6 +97,20 @@ export default function DynamicProfilePage(props: { params: Promise<{ username: 
       }
       return;
     }
+    if (label === "Messages") {
+      setChatPopoverOpen(true);
+      return;
+    }
+  };
+
+  const handleSubscribe = () => {
+      if (!creatorId) return;
+      toggleSub(creatorId);
+  };
+
+  const handleMessage = () => {
+    if (!creatorId) return;
+    router.push(`/chat?u=${creatorId}`);
   };
 
   return (
@@ -147,9 +164,34 @@ export default function DynamicProfilePage(props: { params: Promise<{ username: 
                   Edit profile
                 </button>
             ) : (
-                <button className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-zinc-200" type="button">
-                  Subscribe for ${creatorData?.subscriptionPrice?.toString() || "0.00"}
-                </button>
+                isSubscribed ? (
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={handleMessage}
+                      className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10" 
+                      type="button"
+                    >
+                      Message
+                    </button>
+                    <button 
+                      onClick={handleSubscribe} 
+                      disabled={subPending}
+                      className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-zinc-200 disabled:opacity-50" 
+                      type="button"
+                    >
+                      Subscribed ✓
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handleSubscribe} 
+                    disabled={subPending}
+                    className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-zinc-200 disabled:opacity-50" 
+                    type="button"
+                  >
+                    Subscribe for ${creatorData?.subscriptionPrice?.toString() || "0.00"}
+                  </button>
+                )
             )}
           </div>
 

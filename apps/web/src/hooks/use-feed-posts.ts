@@ -13,6 +13,7 @@ const fetchFeedPosts = async (): Promise<PostData[]> => {
     }
 
     const result = await response.json();
+
     return result.data || [];
 };
 
