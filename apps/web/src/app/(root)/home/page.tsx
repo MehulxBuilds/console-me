@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 /* eslint-disable @next/next/no-img-element */
 import {
   BarChart3,
@@ -27,12 +29,12 @@ import {
   Video,
 } from "lucide-react";
 import { useHomeUIStore } from "@/store/home-ui-store";
+import { useOmegleStore } from "@/store/omegle-store";
 import { useRouter } from "next/navigation";
 import { useMeQuery } from "@/hooks/use-me-query";
 import CreatePost from "@/components/post/create-post";
 import { useFeedPosts } from "@/hooks/use-feed-posts";
 import { useSuggestedCreators } from "@/hooks/use-suggested-creators";
-import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { useSocket } from "@/hooks/use-socket";
 import { useEffect } from "react";
@@ -136,8 +138,15 @@ export default function HomePage() {
             );
           })}
         </nav>
+        <Link
+          href="/video"
+          className="mt-4 flex w-full items-center gap-3 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 px-4 py-3 text-left text-lg font-semibold text-white shadow-lg shadow-purple-500/20 transition-all hover:shadow-purple-500/30 hover:brightness-110"
+        >
+          <Video className="h-5 w-5" />
+          <span>Video Chat</span>
+        </Link>
         <button
-          className="mt-8 w-full rounded-full bg-white py-3 text-xl font-semibold text-black hover:bg-zinc-200 transition-colors"
+          className="mt-4 w-full rounded-full bg-white py-3 text-xl font-semibold text-black hover:bg-zinc-200 transition-colors"
           type="button"
           onClick={() => setPostModalOpen(true)}
         >

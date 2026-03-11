@@ -2,6 +2,7 @@ export * from "./redis";
 export * from "./post-cache";
 export * from "./dm-message-cache";
 export * from "./notification-cache";
+export * from "./omegle-matchmaker";
 
 import { PostCache } from "./post-cache";
 import { DMChatCache } from "./dm-message-cache"

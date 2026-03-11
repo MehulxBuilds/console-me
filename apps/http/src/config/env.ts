@@ -7,4 +7,7 @@ export const env = {
     WEB_APP_URL: process.env.WEB_APP_URL,
     APP_URL: process.env.APP_URL,
     NODE_ENV: process.env.NODE_ENV,
+    LIVEKIT_API_KEY: process.env.LIVEKIT_API_KEY,
+    LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET,
+    LIVEKIT_URL: process.env.LIVEKIT_URL,
 };

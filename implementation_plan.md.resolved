@@ -1,102 +1,197 @@
-# Onboarding Flow Implementation
+# Omegle Video Chat Feature — Implementation Plan
 
-**Goal**: After sign-in, users MUST complete onboarding (claim username + create creator account) before they can access `/home` or any protected route.
+Build the Omegle-style random video chat feature as a full-screen overlay flow accessible from the home page, using LiveKit for video and Redis for matchmaking.
 
-## Current State
+## User Flow (from wireframes)
 
-- **Backend**: `POST /api/v1/user/claim-username` and `POST /api/v1/user/check-username-availaible` already exist.
-- **Frontend**: After Google sign-in, users go straight to `/home` with no onboarding gate.
+```
+Screen 1: Home page → "Go to video chat" button in sidebar
+Screen 2: Overlay modal → Avatar + "Enter your name" + email (pre-filled) + "Create" button
+Screen 3: Camera test → Your camera preview + preferences (gender) + "Start Video Call" button
+Screen 4: Video call → Your camera (left) + Stranger avatar/video (right) + Skip + Chat via LiveKit
+```
 
 ## Proposed Changes
 
-### Backend — HTTP API
+### 1. Redis Matchmaking Engine (`packages/cache`)
 
-#### [NEW] `GET /api/v1/user/onboarding-status`
+#### [NEW] [omegle-matchmaker.ts](file:///d:/console-me/packages/cache/src/omegle-matchmaker.ts)
 
-New endpoint in [user-controller.ts](file:///d:/console-me/apps/http/src/controller/user-controller.ts) and [user-routes.ts](file:///d:/console-me/apps/http/src/routes/user-routes.ts):
-- Checks if authenticated user has a `CreatorProfile`
-- Returns `{ hasCreatorProfile: boolean, username: string | null, role: string }`
-- Used by both the home layout (to gate access) and the onboarding page (to skip if already done)
+A new `OmegleMatchmaker` class using the same Redis connection pattern as `SessionManager` and `DMChatCache`:
 
----
+- `setOnline(userId, displayName, email, preference)` → `SET online:omegle:{userId}` with TTL (heartbeat)
+- `setOffline(userId)` → removes online key
+- `joinQueue(userId, preference)` → `LPUSH` into `omegle:queue:{preference}` and `omegle:queue:any`
+- `leaveQueue(userId)` → `LREM` from queue
+- `findMatch(userId, preference)` → `RPOP` from matching queue, skip self, create room
+- `setMatch(userId1, userId2, roomName)` → `SET match:omegle:{userId1} → {userId2, roomName}` with TTL
+- `getMatch(userId)` → lookup current match
+- `clearMatch(userId1, userId2)` → remove both match keys
+- Singleton `getOmegleMatchmaker()` export
 
-### Frontend — Web App
+#### [MODIFY] [index.ts](file:///d:/console-me/packages/cache/src/index.ts)
 
-#### [MODIFY] [home/layout.tsx](file:///d:/console-me/apps/web/src/app/(root)/home/layout.tsx) — **HARD GATE**
-
-Currently only calls [requireAuth()](file:///d:/console-me/apps/web/src/utils/auth-utils.ts#6-17). Will be updated to:
-1. Call [requireAuth()](file:///d:/console-me/apps/web/src/utils/auth-utils.ts#6-17) (check session exists)
-2. **Check if user has a creator profile** by querying the DB directly (server component)
-3. If **no creator profile** → [redirect("/onboarding")](file:///d:/console-me/apps/web/src/utils/auth-utils.ts#30-41) — user cannot access `/home`
-4. Only render children if onboarding is complete
-
-> [!IMPORTANT]
-> This is the core enforcement. No user can reach `/home` without completing onboarding.
-
-#### [MODIFY] [page.tsx (root `/`)](file:///d:/console-me/apps/web/src/app/page.tsx)
-
-Currently: [redirect("/home")](file:///d:/console-me/apps/web/src/utils/auth-utils.ts#30-41). Updated to:
-1. Check session → if no session, redirect to `/sign-in`
-2. Check creator profile → if missing, redirect to `/onboarding`
-3. Otherwise, redirect to `/home`
-
-#### [MODIFY] [auth-handlers.ts](file:///d:/console-me/apps/web/src/utils/auth-handlers.ts)
-
-Change `callbackURL` from `"/"` to `"/onboarding"` so after Google sign-in, users land on the onboarding page.
-
-#### [NEW] [onboarding/page.tsx](file:///d:/console-me/apps/web/src/app/(auth)/onboarding/page.tsx)
-
-3-step onboarding page:
-
-| Step | Content |
-|------|---------|
-| **1. Welcome** | Show user's Google name/avatar. "Continue" button. |
-| **2. Claim Username** | Input with **debounced availability check** (300ms). Live feedback: ✅ Available / ❌ Taken / ⏳ Checking. Validation: 2-10 chars. "Claim" button calls `POST /api/v1/user/claim-username`. |
-| **3. Success** | Confirmation message. "Go to Homepage" button → `/home`. |
-
-**Guard**: If user already has a creator profile when visiting `/onboarding`, immediately redirect to `/home`.
-
-**Design**: Dark theme, card-based layout, uses shadcn `Input`, `Button`, `Card` from `@repo/ui`.
-
-#### [NEW] [use-debounce.ts](file:///d:/console-me/apps/web/src/hooks/use-debounce.ts)
-
-Reusable debounce hook for the username input (300ms delay).
-
-#### [NEW] [onboarding-store.ts](file:///d:/console-me/apps/web/src/store/onboarding-store.ts)
-
-Zustand store for tracking onboarding step (1→2→3) and claimed username.
-
-#### [MODIFY] [auth-utils.ts](file:///d:/console-me/apps/web/src/utils/auth-utils.ts)
-
-Add a `checkCreatorProfile(userId)` helper function that queries `client.creatorProfile.findUnique({ where: { userId } })` — used by both the root page and the home layout for the gate check.
+Add `export * from "./omegle-matchmaker"` and the singleton getter.
 
 ---
 
-## Route Protection Summary
+### 2. HTTP API — LiveKit Token + Matchmaking (`apps/http`)
 
-```mermaid
-flowchart TD
-    A[User visits any route] --> B{Has session?}
-    B -- No --> C[Redirect to /sign-in]
-    B -- Yes --> D{Has CreatorProfile?}
-    D -- No --> E[Redirect to /onboarding]
-    D -- Yes --> F[Allow access to /home]
-    
-    G[User visits /onboarding] --> H{Has session?}
-    H -- No --> C
-    H -- Yes --> I{Has CreatorProfile?}
-    I -- Yes --> F
-    I -- No --> J[Show onboarding steps]
-    J --> K[Step 1: Welcome]
-    K --> L[Step 2: Claim Username]
-    L --> M[Step 3: Success]
-    M --> F
+#### [NEW] [omegle-controller.ts](file:///d:/console-me/apps/http/src/controller/omegle-controller.ts)
+
+Following existing pattern (`catchAsync`, `AuthRequest`, `AppError`):
+
+- `joinOmegle` — Register user as online, set display name + preference, add to queue, attempt match
+  - If match found → generate LiveKit tokens for both users, return room name + token
+  - If no match → return `{ status: "searching" }`
+- `getToken` — Generate a LiveKit access token for a given room (uses `livekit-server-sdk`)
+- `skipMatch` — Clear current match, re-queue user, attempt new match
+- `leaveOmegle` — Remove from queue, clear match, set offline
+
+#### [NEW] [omegle-routes.ts](file:///d:/console-me/apps/http/src/routes/omegle-routes.ts)
+
 ```
+POST /api/v1/omegle/join      → joinOmegle
+POST /api/v1/omegle/token     → getToken
+POST /api/v1/omegle/skip      → skipMatch
+POST /api/v1/omegle/leave     → leaveOmegle
+```
+
+All routes behind `protect` middleware.
+
+#### [MODIFY] [index.ts](file:///d:/console-me/apps/http/src/index.ts)
+
+Add `import omegleRoutes` and `app.use("/api/v1/omegle", omegleRoutes)`.
+
+#### [MODIFY] [package.json](file:///d:/console-me/apps/http/package.json)
+
+Add `livekit-server-sdk` as a dependency.
+
+---
+
+### 3. WebSocket Events (`apps/ws`)
+
+#### [MODIFY] [index.ts](file:///d:/console-me/apps/ws/src/index.ts)
+
+Add new socket events inside the `io.on("connection")` handler:
+
+| Event | Direction | Purpose |
+|-------|-----------|---------|
+| `omegle:matched` | Server → Client | Match found — sends `{ roomName, token, partnerName, partnerId }` |
+| `omegle:partner-left` | Server → Client | Partner disconnected from the call |
+| `omegle:searching` | Server → Client | Acknowledge search started, no match yet |
+
+The HTTP controller will emit these events via Socket.IO (using `io.to(`user:${userId}`)`) when matches are found. This uses the existing user room system.
+
+---
+
+### 4. Frontend — Omegle UI Components (`apps/web`)
+
+#### [NEW] [omegle-store.ts](file:///d:/console-me/apps/web/src/store/omegle-store.ts)
+
+Zustand store managing the Omegle flow states:
+- `step`: `"idle" | "setup" | "camera-test" | "searching" | "connected" | "partner-left"`
+- `displayName`, `email`, `preference` (gender: "any" | "male" | "female")
+- `roomName`, `token`, `partnerName`, `partnerId`
+- Actions: `openOmegle()`, `closeOmegle()`, `setStep()`, `setMatch()`, `reset()`
+
+#### [NEW] [omegle-overlay.tsx](file:///d:/console-me/apps/web/src/components/omegle/omegle-overlay.tsx)
+
+The main full-screen overlay component, renders based on `step` from the store:
+- **Step "setup"**: Glassmorphism modal with avatar, name input, email (pre-filled/disabled), "Create" button
+- **Step "camera-test"**: Split layout — camera preview (left) + preferences panel (right) with gender selector + "Start Video Call" button
+- **Step "searching"**: Animated "Finding match..." state with pulsing animation
+- **Step "connected"**: Full video call UI (see below)
+- **Step "partner-left"**: Partner left notification + "Find Next" / "Leave" buttons
+
+Premium dark UI with:
+- Backdrop blur glassmorphism
+- Smooth fade/slide transitions between steps
+- Gradient accents (purple → cyan matching existing app vibe)
+- Micro-animations on buttons, status indicators
+
+#### [NEW] [video-room.tsx](file:///d:/console-me/apps/web/src/components/omegle/video-room.tsx)
+
+The actual video call component using LiveKit:
+- **Left panel**: Your camera feed (large)
+- **Right panel**: Stranger's camera/avatar + their name + Skip button + LiveKit Data Channel chat
+- Uses `@livekit/components-react` for `<LiveKitRoom>`, `<VideoTrack>`, `<AudioTrack>`
+- Controls: Mute mic, mute camera, skip, end call
+- Chat panel at the bottom (using LiveKit's built-in data messages)
+
+#### [NEW] [use-omegle.ts](file:///d:/console-me/apps/web/src/hooks/use-omegle.ts)
+
+Custom hook combining:
+- The omegle store
+- Socket.IO listeners for `omegle:matched`, `omegle:partner-left`
+- API calls to `/api/v1/omegle/*` endpoints
+- Camera/mic permission management via `navigator.mediaDevices`
+
+#### [MODIFY] [home page.tsx](file:///d:/console-me/apps/web/src/app/(root)/home/page.tsx)
+
+Add "Go to Video Chat" button in the left sidebar nav, below the existing nav items. Clicking it opens the omegle overlay via `useOmegleStore().openOmegle()`.
+
+#### [MODIFY] [layout.tsx](file:///d:/console-me/apps/web/src/app/layout.tsx)
+
+Mount `<OmegleOverlay />` globally (same pattern as `<PostModal />` and `<ChatPopover />`).
+
+---
+
+### 5. Package Installation
+
+| Package | Where | Purpose |
+|---------|-------|---------|
+| `livekit-server-sdk` | `apps/http` | Generate access tokens server-side |
+| `livekit-client` | `apps/web` | LiveKit browser SDK |
+| `@livekit/components-react` | `apps/web` | Pre-built React video components |
+
+---
+
+### 6. Environment Updates
+
+#### [MODIFY] [.env.example](file:///d:/console-me/.env.example)
+
+Add the LiveKit vars:
+```
+LIVEKIT_API_KEY=""
+LIVEKIT_API_SECRET=""
+LIVEKIT_URL=""
+NEXT_PUBLIC_LIVEKIT_URL=""
+```
+
+#### [MODIFY] [.env](file:///d:/console-me/.env)
+
+Add `NEXT_PUBLIC_LIVEKIT_URL` pointing to the same LiveKit cloud URL.
+
+---
 
 ## Verification Plan
 
-1. **New user**: Sign in → should land on `/onboarding`, NOT `/home`
-2. **Try accessing `/home` directly**: Should be redirected to `/onboarding`
-3. **Debounce**: Type username → see "Checking..." → "Available"/"Taken"
-4. **Claim**: Click "Claim" → creator profile created → Step 3 → "Go to Homepage" → `/home` loads
-5. **Returning user**: Sign in again → should skip onboarding → go to `/home` directly
+### Browser Testing
+
+Since there are no existing automated tests in this project, verification will be done via browser testing:
+
+1. **Start the dev server**: `turbo dev` from the root
+2. **Open http://localhost:3000** in the browser
+3. **Verify "Go to Video Chat" button** appears in the sidebar
+4. **Click it** → the setup overlay should appear with glassmorphism styling
+5. **Fill in name** → email should be pre-filled → click "Create"
+6. **Camera test screen** → verify camera preview works, select preference, click "Start Video Call"
+7. **Searching state** → animated spinner should show
+8. **For match testing** → open a second browser window/tab with a different user, both click "Start Video Call" → they should be matched and see each other's video
+
+### Manual Verification Checklist
+
+> [!IMPORTANT]
+> Since this is a video + WebSocket feature, automated testing is limited. The primary verification method is manual browser testing with 2 browser windows.
+
+- [ ] Overlay opens/closes smoothly with animations
+- [ ] Camera permission prompt appears correctly
+- [ ] Camera preview shows on camera-test screen
+- [ ] Gender preference selector works
+- [ ] LiveKit token is generated (check network tab for `/api/v1/omegle/join` response)
+- [ ] Two users can match and see each other's video
+- [ ] Skip button works — disconnects and re-queues
+- [ ] "End call" returns to home page
+- [ ] Partner disconnect shows "partner left" state
+- [ ] Chat messaging works via LiveKit data channel

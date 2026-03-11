@@ -13,6 +13,7 @@ import subscriptionRoutes from "./routes/subscription-routes";
 import messageRoutes from "./routes/message-routes";
 import likeRoutes from "./routes/like-routes";
 import followRoutes from "./routes/follow-routes";
+import omegleRoutes from "./routes/omegle-routes";
 
 const app = express();
 
@@ -57,6 +58,7 @@ app.use('/api/v1/subscription', subscriptionRoutes);
 app.use('/api/v1/message', messageRoutes);
 app.use('/api/v1/like', likeRoutes);
 app.use('/api/v1/follow', followRoutes);
+app.use('/api/v1/omegle', omegleRoutes);
 
 app.listen(5000, async () => {
     await client.$connect();
