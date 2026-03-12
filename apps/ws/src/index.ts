@@ -91,6 +91,23 @@ io.on("connection", (socket) => {
         console.log(`[WS] ${socket.userId ?? socket.id} left room: ${roomKey}`);
     });
 
+    // ─── Omegle Events ───
+
+    // When a user leaves or skips in omegle, notify their partner
+    socket.on("omegle:leave", (data: { partnerId: string }) => {
+        if (data.partnerId) {
+            io.to(`user:${data.partnerId}`).emit("omegle:partner-left");
+            console.log(`[WS] Omegle: ${socket.userId} left, notified ${data.partnerId}`);
+        }
+    });
+
+    socket.on("omegle:skip", (data: { partnerId: string }) => {
+        if (data.partnerId) {
+            io.to(`user:${data.partnerId}`).emit("omegle:partner-left");
+            console.log(`[WS] Omegle: ${socket.userId} skipped, notified ${data.partnerId}`);
+        }
+    });
+
     socket.on("disconnect", async () => {
         const userId = socket.userId;
         console.log(`[WS] Disconnected: ${socket.id} (user: ${userId ?? "unknown"})`);
