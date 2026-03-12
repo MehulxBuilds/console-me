@@ -18,6 +18,7 @@
         "@repo/cache": "workspace:*",
         "@repo/db": "workspace:*",
         "@repo/kafka": "workspace:*",
+        "@repo/livekit": "workspace:*",
         "better-auth": "^1.4.18",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.6",
@@ -263,6 +264,17 @@
       "version": "0.1.0",
       "dependencies": {
         "kafkajs": "^2.2.4",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5",
+      },
+    },
+    "packages/livekit": {
+      "name": "@repo/livekit",
+      "version": "0.1.0",
+      "dependencies": {
+        "livekit-server-sdk": "^2.15.0",
       },
       "devDependencies": {
         "@types/node": "^22.0.0",
@@ -856,6 +868,8 @@
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
 
     "@repo/kafka": ["@repo/kafka@workspace:packages/kafka"],
+
+    "@repo/livekit": ["@repo/livekit@workspace:packages/livekit"],
 
     "@repo/typescript-config": ["@repo/typescript-config@workspace:packages/typescript-config"],
 
@@ -2616,6 +2630,8 @@
     "@repo/eslint-config/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@repo/kafka/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "@repo/livekit/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@repo/ui/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
