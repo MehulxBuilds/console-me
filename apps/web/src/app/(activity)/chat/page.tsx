@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useHomeUIStore } from "@/store/home-ui-store";
 import { useConversations, useMessageHistory, useSendMessage, type ChatMessage, type Conversation } from "@/hooks/use-chat";
 import { useSocket } from "@/hooks/use-socket";
@@ -25,6 +25,14 @@ const navItems = [
 ];
 
 export default function ChatPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-black" />}>
+            <ChatPageContent />
+        </Suspense>
+    );
+}
+
+function ChatPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const initialUserId = searchParams.get("u");
