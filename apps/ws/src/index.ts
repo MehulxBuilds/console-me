@@ -5,16 +5,17 @@ import { Redis } from "ioredis";
 import { getSessionManager } from "@repo/cache";
 import { kafka, TOPICS } from "@repo/kafka";
 import type { Consumer } from "@repo/kafka";
+import { server_env as env } from "@repo/env";
 
-const PORT = parseInt(process.env.SOCKET_PORT || "8080", 10);
+const PORT = parseInt(env.SOCKET_PORT || "8080", 10);
 const NODE_ID = crypto.randomUUID();
 
 // Redis clients for Socket.IO adapter (pub/sub)
 const redisConfig = {
-    host: process.env.REDIS_HOST || "localhost",
-    port: parseInt(process.env.REDIS_PORT || "6379", 10),
-    username: process.env.REDIS_USERNAME || "default",
-    password: process.env.REDIS_PASSWORD || undefined,
+    host: env.REDIS_HOST || "localhost",
+    port: parseInt(env.REDIS_PORT || "6379", 10),
+    username: env.REDIS_USERNAME || "default",
+    password: env.REDIS_PASSWORD || undefined,
 };
 
 const pubClient = new Redis(redisConfig);
@@ -35,8 +36,7 @@ const io = new ServerIO(httpServer, {
     addTrailingSlash: false,
     cors: {
         origin: [
-            process.env.WEB_APP_URL || "http://localhost:3000",
-            process.env.APP_URL || "http://localhost:3001",
+            env.WEB_URL || "http://localhost:3000",
         ],
         methods: ["GET", "POST"],
         credentials: true,

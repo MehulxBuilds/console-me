@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import { env } from "./config/env";
+import { server_env as env } from "@repo/env";
 
 export interface OmegleUser {
     userId: string;
@@ -25,10 +25,10 @@ export class OmegleMatchmaker {
 
     constructor() {
         this.redis = new Redis({
-            host: env.HOST,
-            port: env.PORT,
-            username: env.USERNAME,
-            password: env.PASSWORD,
+            host: env.REDIS_HOST,
+            port: parseInt(env.REDIS_PORT),
+            username: env.REDIS_USERNAME,
+            password: env.REDIS_PASSWORD,
         });
 
         this.redis.on("error", (err) => {

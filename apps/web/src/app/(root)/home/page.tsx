@@ -74,8 +74,8 @@ export default function HomePage() {
     setActiveNav(label);
 
     if (label === "Profile") {
-      const username = meData?.user?.username || meData?.user?.email?.split('@')[0] || 'user';
-      router.push(`/creator/${username}`);
+      const username = meData?.user?.username;
+      router.push(username ? `/creator/${username}` : "/creator");
       return;
     }
 
@@ -193,82 +193,100 @@ export default function HomePage() {
             </div>
           )}
 
-          {feedPosts?.map((post, index) => (
-            <article
-              key={post.id}
-              className="border-b border-zinc-800 px-4 py-4 transition hover:bg-white/[0.02]"
-            >
-              <div className="flex gap-3">
-                <Link href={`/creator/${post.author?.username || ''}`}>
-                  <img
-                    src={post.author?.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"}
-                    alt={`${post.author?.name || 'User'} avatar`}
-                    className="h-12 w-12 rounded-full object-cover transition-opacity hover:opacity-80 cursor-pointer"
-                  />
-                </Link>
-                <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="truncate">
-                      <Link href={`/creator/${post.author?.username || ''}`} className="text-[17px] font-semibold hover:underline cursor-pointer">
-                        {post.author?.name || 'User'}
-                      </Link>
-                      <span className="ml-2 text-sm text-zinc-400">
-                        @{post.author?.username || 'user'} - {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
-                      </span>
-                      {post.isLocked && (
-                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
-                          <Lock className="h-3 w-3" />
-                          Locked
-                        </span>
-                      )}
-                    </div>
-                    <Ellipsis className="h-5 w-5 text-zinc-500" />
-                  </div>
-                  <p className="mb-3 text-[17px] leading-6 text-zinc-100">{post.caption}</p>
+          {feedPosts?.map((post, index) => {
+            const authorProfileHref = post.author?.username && post.author.username !== "user"
+              ? `/creator/${post.author.username}`
+              : null;
 
-                  {post.media_url && (
-                    <div className="overflow-hidden rounded-2xl border border-zinc-800">
-                      {post.media_type === "VIDEO" ? (
-                        <video
-                          src={post.media_url}
-                          className="h-[320px] w-full object-cover"
-                          controls
-                        />
-                      ) : (
-                        <img
-                          src={post.media_url}
-                          alt={`Post by ${post.author.name}`}
-                          className="h-[320px] w-full object-cover"
-                        />
-                      )}
-                    </div>
+            return (
+              <article
+                key={post.id}
+                className="border-b border-zinc-800 px-4 py-4 transition hover:bg-white/[0.02]"
+              >
+                <div className="flex gap-3">
+                  {authorProfileHref ? (
+                    <Link href={authorProfileHref}>
+                      <img
+                        src={post.author?.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"}
+                        alt={`${post.author?.name || 'User'} avatar`}
+                        className="h-12 w-12 rounded-full object-cover transition-opacity hover:opacity-80 cursor-pointer"
+                      />
+                    </Link>
+                  ) : (
+                    <img
+                      src={post.author?.image || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=faces"}
+                      alt={`${post.author?.name || 'User'} avatar`}
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
                   )}
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="truncate">
+                        {authorProfileHref ? (
+                          <Link href={authorProfileHref} className="text-[17px] font-semibold hover:underline cursor-pointer">
+                            {post.author?.name || 'User'}
+                          </Link>
+                        ) : (
+                          <span className="text-[17px] font-semibold">{post.author?.name || 'User'}</span>
+                        )}
+                        <span className="ml-2 text-sm text-zinc-400">
+                          @{post.author?.username || 'user'} - {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                        </span>
+                        {post.isLocked && (
+                          <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
+                            <Lock className="h-3 w-3" />
+                            Locked
+                          </span>
+                        )}
+                      </div>
+                      <Ellipsis className="h-5 w-5 text-zinc-500" />
+                    </div>
+                    <p className="mb-3 text-[17px] leading-6 text-zinc-100">{post.caption}</p>
 
-                  <div className="mt-3 flex items-center justify-between text-zinc-500">
-                    <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-sky-500/10 hover:text-sky-400" type="button">
-                      <MessageCircle className="h-4 w-4" />
-                      <span className="text-xs">0</span>
-                    </button>
-                    <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-emerald-500/10 hover:text-emerald-400" type="button">
-                      <Repeat2 className="h-4 w-4" />
-                      <span className="text-xs">0</span>
-                    </button>
-                    <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-pink-500/10 hover:text-pink-400" type="button">
-                      <Heart className="h-4 w-4" />
-                      <span className="text-xs">0</span>
-                    </button>
-                    <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-sky-500/10 hover:text-sky-400" type="button">
-                      <BarChart3 className="h-4 w-4" />
-                      <span className="text-xs">0</span>
-                    </button>
-                    <button className="rounded-full p-1 hover:bg-white/10 hover:text-white" type="button">
-                      <Share className="h-4 w-4" />
-                    </button>
+                    {post.media_url && (
+                      <div className="overflow-hidden rounded-2xl border border-zinc-800">
+                        {post.media_type === "VIDEO" ? (
+                          <video
+                            src={post.media_url}
+                            className="h-[320px] w-full object-cover"
+                            controls
+                          />
+                        ) : (
+                          <img
+                            src={post.media_url}
+                            alt={`Post by ${post.author.name}`}
+                            className="h-[320px] w-full object-cover"
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex items-center justify-between text-zinc-500">
+                      <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-sky-500/10 hover:text-sky-400" type="button">
+                        <MessageCircle className="h-4 w-4" />
+                        <span className="text-xs">0</span>
+                      </button>
+                      <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-emerald-500/10 hover:text-emerald-400" type="button">
+                        <Repeat2 className="h-4 w-4" />
+                        <span className="text-xs">0</span>
+                      </button>
+                      <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-pink-500/10 hover:text-pink-400" type="button">
+                        <Heart className="h-4 w-4" />
+                        <span className="text-xs">0</span>
+                      </button>
+                      <button className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-sky-500/10 hover:text-sky-400" type="button">
+                        <BarChart3 className="h-4 w-4" />
+                        <span className="text-xs">0</span>
+                      </button>
+                      <button className="rounded-full p-1 hover:bg-white/10 hover:text-white" type="button">
+                        <Share className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
         </section>
       </main>
 

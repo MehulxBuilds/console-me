@@ -1,10 +1,8 @@
 import express from "express";
-import cookieParser from "cookie-parser";
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import cors from "cors";
-import { auth } from "@repo/auth";
 import { client } from "@repo/db";
-import { env } from "./config/env";
+import { server_env as env } from "@repo/env";
 import postRoutes from "./routes/post-routes";
 import creatorRoutes from "./routes/creator-routes";
 import userRoutes from "./routes/user-routes";
@@ -15,10 +13,11 @@ import likeRoutes from "./routes/like-routes";
 import followRoutes from "./routes/follow-routes";
 import omegleRoutes from "./routes/omegle-routes";
 import friendRoutes from "./routes/friend-routes";
+import { auth } from "./config/auth";
 
 const app = express();
 
-const allowedOrigins = [env.WEB_APP_URL, env.APP_URL, "http://localhost:3000"].filter(
+const allowedOrigins = [env.WEB_URL,].filter(
     (origin): origin is string => Boolean(origin),
 );
 
@@ -35,19 +34,56 @@ app.use(
         credentials: true,
     }),
 );
-app.use(cookieParser());
-app.use(express.json());
 
-app.all("/api/auth/*splat", toNodeHandler(auth));
+app.all('/api/auth/*splat', toNodeHandler(auth))
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
 app.get("/api/me", async (req, res) => {
     const session = await auth.api.getSession({
         headers: fromNodeHeaders(req.headers),
     });
-    return res.json(session);
+
+    if (!session) {
+        return res.json(null);
+    }
+
+    const user = await client.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+            id: true,
+            email: true,
+            name: true,
+            image: true,
+            bio: true,
+            role: true,
+            createdAt: true,
+            creatorProfile: {
+                select: {
+                    id: true,
+                    username: true,
+                },
+            },
+        },
+    });
+
+    if (!user) {
+        return res.json(null);
+    }
+
+    return res.json({
+        ...session,
+        user: {
+            ...session.user,
+            ...user,
+            creatorId: user.creatorProfile?.id ?? null,
+            username: user.creatorProfile?.username ?? null,
+            creatorProfile: undefined,
+        },
+    });
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
     res.send("All Good!")
 })
 

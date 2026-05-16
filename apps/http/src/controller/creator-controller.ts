@@ -205,7 +205,10 @@ export const fetchProfileByUsername = catchAsync(
             });
 
             if (!creatorProfile) {
-                throw new AppError("Creator not found", 404);
+                return res.status(404).json({
+                    success: false,
+                    message: "Creator not found",
+                });
             }
 
             res.status(200).json({

@@ -1,5 +1,5 @@
 import { AccessToken } from "livekit-server-sdk";
-import { env } from "../config/env";
+import { server_env as env } from "@repo/env";
 
 export interface GenerateToken {
     roomName: string,

@@ -14,9 +14,9 @@
       "name": "http",
       "dependencies": {
         "@repo/ai-service": "workspace:*",
-        "@repo/auth": "workspace:*",
         "@repo/cache": "workspace:*",
         "@repo/db": "workspace:*",
+        "@repo/env": "workspace:*",
         "@repo/kafka": "workspace:*",
         "better-auth": "^1.4.18",
         "cookie-parser": "^1.4.7",
@@ -90,8 +90,6 @@
         "@giphy/react-components": "^10.1.1",
         "@hookform/resolvers": "^5.2.2",
         "@livekit/components-react": "^2.9.20",
-        "@repo/auth": "workspace:*",
-        "@repo/db": "workspace:*",
         "@repo/ui": "workspace:*",
         "@tanstack/react-query": "^5.90.21",
         "@uploadthing/react": "^7.3.3",
@@ -155,6 +153,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@repo/cache": "workspace:*",
+        "@repo/env": "workspace:*",
         "@repo/kafka": "workspace:*",
         "@socket.io/redis-adapter": "^8.3.0",
         "dotenv": "^16.4.5",
@@ -174,21 +173,7 @@
       "dependencies": {
         "@google/genai": "^1.42.0",
         "@openrouter/sdk": "^0.9.11",
-      },
-      "devDependencies": {
-        "@types/bun": "latest",
-      },
-      "peerDependencies": {
-        "typescript": "^5",
-      },
-    },
-    "packages/auth": {
-      "name": "@repo/auth",
-      "dependencies": {
-        "@repo/db": "workspace:*",
-        "better-auth": "^1.4.18",
-        "dotenv": "^17.3.1",
-        "tsx": "^4.21.0",
+        "@repo/env": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -200,6 +185,7 @@
     "packages/cache": {
       "name": "@repo/cache",
       "dependencies": {
+        "@repo/env": "workspace:*",
         "ioredis": "^5.9.3",
       },
       "devDependencies": {
@@ -214,6 +200,7 @@
       "dependencies": {
         "@prisma/adapter-pg": "^7.4.0",
         "@prisma/client": "^7.4.0",
+        "@repo/env": "workspace:*",
         "@types/pg": "^8.16.0",
         "better-auth": "^1.4.18",
         "dotenv": "^17.3.1",
@@ -228,16 +215,15 @@
         "typescript": "^5",
       },
     },
-    "packages/email-service": {
-      "name": "@repo/email-service",
+    "packages/env": {
+      "name": "@repo/env",
+      "version": "0.1.0",
       "dependencies": {
-        "@types/nodemailer": "^7.0.11",
-        "nodemailer": "^8.0.1",
+        "dotenv": "^17.3.1",
+        "zod": "^4.3.6",
       },
       "devDependencies": {
-        "@types/bun": "latest",
-      },
-      "peerDependencies": {
+        "@types/node": "^22.0.0",
         "typescript": "^5",
       },
     },
@@ -273,6 +259,7 @@
       "name": "@repo/livekit",
       "version": "0.1.0",
       "dependencies": {
+        "@repo/env": "workspace:*",
         "livekit-server-sdk": "^2.15.0",
       },
       "devDependencies": {
@@ -856,13 +843,11 @@
 
     "@repo/ai-service": ["@repo/ai-service@workspace:packages/ai-service"],
 
-    "@repo/auth": ["@repo/auth@workspace:packages/auth"],
-
     "@repo/cache": ["@repo/cache@workspace:packages/cache"],
 
     "@repo/db": ["@repo/db@workspace:packages/db"],
 
-    "@repo/email-service": ["@repo/email-service@workspace:packages/email-service"],
+    "@repo/env": ["@repo/env@workspace:packages/env"],
 
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
 
@@ -977,8 +962,6 @@
     "@types/json5": ["@types/json5@0.0.29", "", {}, "sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ=="],
 
     "@types/node": ["@types/node@22.19.11", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w=="],
-
-    "@types/nodemailer": ["@types/nodemailer@7.0.11", "", { "dependencies": { "@types/node": "*" } }, "sha512-E+U4RzR2dKrx+u3N4DlsmLaDC6mMZOM/TPROxA0UAPiTgI0y4CEFBmZE+coGWTjakDriRsXG368lNk1u9Q0a2g=="],
 
     "@types/pg": ["@types/pg@8.16.0", "", { "dependencies": { "@types/node": "*", "pg-protocol": "*", "pg-types": "^2.2.0" } }, "sha512-RmhMd/wD+CF8Dfo+cVIy3RR5cl8CyfXQ0tGgW6XBL8L4LM/UTEbNXYRbLwU6w+CgrKBNbrQWt4FUtTfaU5jSYQ=="],
 
@@ -1920,8 +1903,6 @@
 
     "node-releases": ["node-releases@2.0.27", "", {}, "sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA=="],
 
-    "nodemailer": ["nodemailer@8.0.1", "", {}, "sha512-5kcldIXmaEjZcHR6F28IKGSgpmZHaF1IXLWFTG+Xh3S+Cce4MiakLtWY+PlBU69fLbRa8HlaGIrC/QolUpHkhg=="],
-
     "nodemon": ["nodemon@3.1.11", "", { "dependencies": { "chokidar": "^3.5.2", "debug": "^4", "ignore-by-default": "^1.0.1", "minimatch": "^3.1.2", "pstree.remy": "^1.1.8", "semver": "^7.5.3", "simple-update-notifier": "^2.0.0", "supports-color": "^5.5.0", "touch": "^3.1.0", "undefsafe": "^2.0.5" }, "bin": { "nodemon": "bin/nodemon.js" } }, "sha512-is96t8F/1//UHAjNPHpbsNY46ELPpftGUoSVNXwUfMk/qdjSylYrWSu1XavVTBOn526kFiOR733ATgNBCQyH0g=="],
 
     "normalize-path": ["normalize-path@3.0.0", "", {}, "sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA=="],
@@ -2625,6 +2606,8 @@
     "@radix-ui/react-tooltip/@radix-ui/react-primitive": ["@radix-ui/react-primitive@2.1.3", "", { "dependencies": { "@radix-ui/react-slot": "1.2.3" }, "peerDependencies": { "@types/react": "*", "@types/react-dom": "*", "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc" }, "optionalPeers": ["@types/react", "@types/react-dom"] }, "sha512-m9gTwRkhy2lvCPe6QJp4d3G1TYEUHn/FzJUtq9MjH46an1wJU+GdoGC5VLof8RX8Ft/DlpshApkhswDLZzHIcQ=="],
 
     "@radix-ui/react-visually-hidden/@radix-ui/react-primitive": ["@radix-ui/react-primitive@2.1.3", "", { "dependencies": { "@radix-ui/react-slot": "1.2.3" }, "peerDependencies": { "@types/react": "*", "@types/react-dom": "*", "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc" }, "optionalPeers": ["@types/react", "@types/react-dom"] }, "sha512-m9gTwRkhy2lvCPe6QJp4d3G1TYEUHn/FzJUtq9MjH46an1wJU+GdoGC5VLof8RX8Ft/DlpshApkhswDLZzHIcQ=="],
+
+    "@repo/env/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@repo/eslint-config/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 

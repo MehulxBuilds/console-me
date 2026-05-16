@@ -14,8 +14,6 @@
     "@giphy/react-components": "^10.1.1",
     "@hookform/resolvers": "^5.2.2",
     "@livekit/components-react": "^2.9.20",
-    "@repo/auth": "workspace:*",
-    "@repo/db": "workspace:*",
     "@repo/ui": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
     "@uploadthing/react": "^7.3.3",

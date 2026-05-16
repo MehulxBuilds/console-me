@@ -1,12 +1,67 @@
-import { auth } from '@repo/auth';
-import { client } from '@repo/db';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { API_BASE } from "./constants";
+
+type SessionResponse = {
+    user: {
+        id: string;
+        name: string;
+        email: string;
+        emailVerified?: boolean;
+        image?: string | null;
+        createdAt?: string | Date;
+        updatedAt?: string | Date;
+        role?: string;
+        bio?: string | null;
+    };
+    session: {
+        id: string;
+        userId: string;
+        expiresAt: string | Date;
+        token?: string;
+    };
+} | null;
+
+type CreatorProfile = {
+    id: string;
+    username?: string | null;
+    subscriptionPrice?: number | null;
+    createdAt?: string;
+};
+
+type ApiResponse<T> = {
+    success: boolean;
+    message?: string;
+    data?: T;
+};
+
+const getCookieHeader = async () => {
+    const headerList = await headers();
+    return headerList.get("cookie") ?? "";
+};
+
+const fetchFromHttpApi = async <T>(path: string, init?: RequestInit): Promise<T | null> => {
+    const cookie = await getCookieHeader();
+    const response = await fetch(`${API_BASE}${path}`, {
+        ...init,
+        headers: {
+            ...(cookie ? { cookie } : {}),
+            ...init?.headers,
+        },
+        cache: "no-store",
+    });
+
+    if (!response.ok) {
+        return null;
+    }
+
+    return response.json() as Promise<T>;
+};
+
+const getSession = () => fetchFromHttpApi<SessionResponse>("/api/me");
 
 export const requireAuth = async () => {
-    const session = await auth.api.getSession({
-        headers: await headers()
-    })
+    const session = await getSession();
 
     if (!session) {
         redirect("/sign-in");
@@ -16,9 +71,7 @@ export const requireAuth = async () => {
 };
 
 export const requireUnAuth = async () => {
-    const session = await auth.api.getSession({
-        headers: await headers()
-    })
+    const session = await getSession();
 
     if (session) {
         redirect("/");
@@ -28,42 +81,25 @@ export const requireUnAuth = async () => {
 };
 
 export const redirectToHomeIfSession = async () => {
-    const session = await auth.api.getSession({
-        headers: await headers()
-    })
+    const session = await getSession();
 
     if (session) {
         redirect("/home");
     }
 
     return session;
-}
+};
 
 export const currentUser = async () => {
-    const session = await auth.api.getSession({
-        headers: await headers()
-    });
+    const session = await getSession();
+    return session?.user ?? null;
+};
 
-    if (!session?.user) {
-        return null;
-    }
+export const checkCreatorProfile = async (_userId?: string) => {
+    const result = await fetchFromHttpApi<ApiResponse<CreatorProfile[]>>("/api/v1/creator/fetch-profile");
+    const [profile] = result?.data ?? [];
 
-    const user = await client.user.findUnique({
-        where: {
-            id: session.user.id,
-        }
-    })
-
-    return user;
-}
-
-export const checkCreatorProfile = async (userId: string) => {
-    const profile = await client.creatorProfile.findUnique({
-        where: { userId },
-        select: { username: true },
-    });
-
-    return profile;
+    return profile ?? null;
 };
 
 export const requireOnboardingComplete = async () => {

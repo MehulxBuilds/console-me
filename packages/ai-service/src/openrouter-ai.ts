@@ -1,5 +1,5 @@
 import { OpenRouter } from "@openrouter/sdk";
-import { env } from "./config/env";
+import { server_env as env } from "@repo/env";
 
 const openrouter = new OpenRouter({
     apiKey: env.OPENROUTER_API_KEY

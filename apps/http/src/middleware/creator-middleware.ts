@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../utils/app-error.js";
 import { client, Role } from "@repo/db";
-import { auth } from "@repo/auth";
+import { auth } from "../config/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
 import { AuthRequest } from "./user-middleware.js";
 

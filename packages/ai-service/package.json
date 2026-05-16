@@ -16,6 +16,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@repo/env": "workspace:*",
     "@google/genai": "^1.42.0",
     "@openrouter/sdk": "^0.9.11"
   }

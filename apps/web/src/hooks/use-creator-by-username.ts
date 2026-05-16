@@ -28,10 +28,11 @@ const fetchCreatorByUsername = async (username: string): Promise<CreatorProfileB
     return result.data;
 };
 
-export const useCreatorByUsername = (username: string | undefined) => {
+export const useCreatorByUsername = (username: string | undefined, enabled = true) => {
     return useQuery({
         queryKey: ["creatorProfile", "username", username],
         queryFn: () => fetchCreatorByUsername(username!),
-        enabled: !!username,
+        enabled: !!username && enabled,
+        retry: false,
     });
 };
