@@ -1,10 +1,11 @@
 import { API_BASE } from "@/utils/constants";
-import { clearStoredAuthToken } from "./auth-token";
+import { clearStoredAuthToken, getStoredAuthToken } from "./auth-token";
 
 export const signOut = async () => {
-    clearStoredAuthToken();
+    const token = getStoredAuthToken();
     await fetch(`${API_BASE}/api/auth/logout`, {
         method: "POST",
-        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
+    clearStoredAuthToken();
 };

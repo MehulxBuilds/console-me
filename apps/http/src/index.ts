@@ -113,9 +113,12 @@ app.use('/api/v1/follow', followRoutes);
 app.use('/api/v1/omegle', omegleRoutes);
 app.use('/api/v1/friends', friendRoutes);
 
-app.listen(5000, async () => {
+const PORT = Number.parseInt(env.PORT || "5000", 10);
+const HOST = "0.0.0.0";
+
+app.listen(PORT, HOST, async () => {
     await client.$connect();
     console.log("Database connected successfully");
-    console.log("Server is running on port 5000");
+    console.log(`Server is running on ${HOST}:${PORT}`);
     console.log(`Allowed CORS origins: ${allowedOrigins.join(", ")}`);
 });
