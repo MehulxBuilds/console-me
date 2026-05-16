@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import { server_env as env } from "@repo/env";
+import { createRedisClient } from "./redis";
 
 export interface OmegleUser {
     userId: string;
@@ -24,12 +24,7 @@ export class OmegleMatchmaker {
     private readonly QUEUE_KEY = "omegle:queue";
 
     constructor() {
-        this.redis = new Redis({
-            host: env.REDIS_HOST,
-            port: parseInt(env.REDIS_PORT),
-            username: env.REDIS_USERNAME,
-            password: env.REDIS_PASSWORD,
-        });
+        this.redis = createRedisClient();
 
         this.redis.on("error", (err) => {
             console.error("[OmegleMatchmaker] Redis error:", err);

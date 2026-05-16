@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import { server_env as env } from "@repo/env";
+import { createRedisClient } from "./redis";
 
 export class NotificationCache {
     private redis: Redis;
@@ -7,11 +7,7 @@ export class NotificationCache {
     private readonly CACHE_TTL = 300;
 
     constructor() {
-        const redisUrl = env.REDIS_HOST;
-        if (!redisUrl) {
-            console.warn("REDIS_CACHE_URL not found, using default 6380");
-        }
-        this.redis = new Redis(redisUrl || "redis://localhost:6380");
+        this.redis = createRedisClient();
 
         this.redis.on("error", (err) => {
             console.error("[MessageCache] Redis error:", err);

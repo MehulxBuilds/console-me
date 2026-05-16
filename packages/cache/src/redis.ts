@@ -1,4 +1,4 @@
-import { Redis } from "ioredis";
+import { Redis, type RedisOptions } from "ioredis";
 import { server_env as env } from "@repo/env";
 
 export interface UserSession {
@@ -10,11 +10,44 @@ export interface UserSession {
     lastSeen: number;
 }
 
-const redisConfig = {
-    host: env.REDIS_HOST,
-    port: parseInt(env.REDIS_PORT),
-    username: env.REDIS_USERNAME,
-    password: env.REDIS_PASSWORD,
+export const getRedisConfig = (): RedisOptions => {
+    const host = env.REDIS_HOST || "localhost";
+    const isUrl = host.startsWith("redis://") || host.startsWith("rediss://");
+
+    if (isUrl) {
+        return {
+            username: env.REDIS_USERNAME,
+            password: env.REDIS_PASSWORD,
+            connectTimeout: 10_000,
+            maxRetriesPerRequest: 2,
+            retryStrategy: (times) => Math.min(times * 250, 2_000),
+            lazyConnect: true,
+            tls: host.startsWith("rediss://") ? {} : undefined,
+        };
+    }
+
+    return {
+        host,
+        port: Number.parseInt(env.REDIS_PORT || "6379", 10),
+        username: env.REDIS_USERNAME,
+        password: env.REDIS_PASSWORD,
+        connectTimeout: 10_000,
+        maxRetriesPerRequest: 2,
+        retryStrategy: (times) => Math.min(times * 250, 2_000),
+        lazyConnect: true,
+        tls: env.REDIS_TLS ? {} : undefined,
+    };
+};
+
+export const createRedisClient = () => {
+    const host = env.REDIS_HOST || "localhost";
+    const config = getRedisConfig();
+
+    if (host.startsWith("redis://") || host.startsWith("rediss://")) {
+        return new Redis(host, config);
+    }
+
+    return new Redis(config);
 };
 
 export class SessionManager {
@@ -22,7 +55,7 @@ export class SessionManager {
     private readonly SESSION_TTL = 1800; // 30 min
 
     constructor() {
-        this.redis = new Redis(redisConfig);
+        this.redis = createRedisClient();
 
         this.redis.on("connect", () => console.log("Redis connected"));
         this.redis.on("error", (err) => console.error("Redis error:", err));

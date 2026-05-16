@@ -20,6 +20,7 @@ export const ServerEnvSchema = z.object({
     REDIS_PORT: z.string(),
     REDIS_USERNAME: z.string().optional(),
     REDIS_PASSWORD: z.string().optional(),
+    REDIS_TLS: z.string().optional().transform((val) => val?.toLowerCase() === "true"),
     GEMINI_API_KEY: z.string(),
     OPENROUTER_API_KEY: z.string(),
     KAFKA_BROKER: z.string(),
