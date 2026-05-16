@@ -17,6 +17,8 @@ import { auth } from "./config/auth";
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 const allowedOrigins = [env.WEB_URL,].filter(
     (origin): origin is string => Boolean(origin),
 );

@@ -6,10 +6,20 @@ import { client } from '@repo/db';
 
 export const auth = betterAuth({
   plugins: [oAuthProxy()],
+  baseURL: env.SERVER_URL,
+  secret: env.BETTER_AUTH_SECRET,
   database: prismaAdapter(client, {
     provider: 'postgresql'
   }),
-  trustedOrigins: [env.WEB_URL,],
+  trustedOrigins: [env.WEB_URL, env.SERVER_URL],
+  advanced: {
+    trustedProxyHeaders: true,
+    defaultCookieAttributes: {
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+      httpOnly: true,
+    },
+  },
   onAPIError: {
     errorURL: `${env.WEB_URL}/sign-in`,
   },
