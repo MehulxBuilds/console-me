@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../utils/app-error.js";
 import { client, Role } from "@repo/db";
 import { AuthRequest } from "./user-middleware.js";
-import { AUTH_COOKIE_NAME, verifyAuthToken } from "../utils/jwt-auth.js";
+import { getAuthTokenFromRequest, verifyAuthToken } from "../utils/jwt-auth.js";
 
 export const protectCreator = async (
     req: AuthRequest,
@@ -10,7 +10,7 @@ export const protectCreator = async (
     next: NextFunction
 ) => {
     try {
-        const token = req.cookies?.[AUTH_COOKIE_NAME];
+        const token = getAuthTokenFromRequest(req);
 
         if (!token) {
             throw new AppError("Not authorized. Please login.", 401);

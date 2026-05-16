@@ -56,6 +56,7 @@ export const googleLogin = async (req: Request, res: Response) => {
     return res.status(200).json({
         success: true,
         data: {
+            token,
             user: {
                 id: user.id,
                 name: user.name,
