@@ -21,16 +21,13 @@ export const verifyAuthToken = (token: string) => {
 };
 
 export const getAuthTokenFromRequest = (req: { cookies?: Record<string, string>; headers: Record<string, string | string[] | undefined> }) => {
-    const cookieToken = req.cookies?.[AUTH_COOKIE_NAME];
-    if (cookieToken) return cookieToken;
-
     const authorization = req.headers.authorization;
     const authorizationValue = Array.isArray(authorization) ? authorization[0] : authorization;
     if (authorizationValue?.startsWith("Bearer ")) {
         return authorizationValue.slice("Bearer ".length);
     }
 
-    return null;
+    return req.cookies?.[AUTH_COOKIE_NAME] ?? null;
 };
 
 export const setAuthCookie = (res: Response, token: string) => {

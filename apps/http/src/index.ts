@@ -18,8 +18,6 @@ import { getAuthTokenFromRequest, verifyAuthToken } from "./utils/jwt-auth";
 
 const app = express();
 
-app.set("trust proxy", 1);
-
 const allowedOrigins = [env.WEB_URL,].filter(
     (origin): origin is string => Boolean(origin),
 );
@@ -39,7 +37,6 @@ app.use(
 );
 
 app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
 
 app.use("/api/auth", authRoutes);
@@ -55,6 +52,11 @@ app.get("/api/me", async (req, res) => {
     try {
         payload = verifyAuthToken(token);
     } catch {
+        return res.json(null);
+    }
+
+    const session = await client.session.findUnique({ where: { token } });
+    if (!session || session.expiresAt < new Date()) {
         return res.json(null);
     }
 
@@ -83,9 +85,9 @@ app.get("/api/me", async (req, res) => {
 
     return res.json({
         session: {
-            id: payload.userId,
+            id: session.id,
             userId: payload.userId,
-            expiresAt: null,
+            expiresAt: session.expiresAt,
         },
         user: {
             ...user,

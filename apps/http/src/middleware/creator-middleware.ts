@@ -17,6 +17,11 @@ export const protectCreator = async (
         }
         const payload = verifyAuthToken(token);
 
+        const session = await client.session.findUnique({ where: { token } });
+        if (!session || session.expiresAt < new Date()) {
+            throw new AppError("Session expired. Please login again.", 401);
+        }
+
         const user = await client.user.findUnique({
             where: { id: payload.userId },
             include: {

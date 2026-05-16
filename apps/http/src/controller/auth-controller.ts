@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { OAuth2Client } from "google-auth-library";
 import { client } from "@repo/db";
 import { server_env as env } from "@repo/env";
-import { clearAuthCookie, setAuthCookie, signAuthToken } from "../utils/jwt-auth.js";
+import { AUTH_COOKIE_NAME, clearAuthCookie, setAuthCookie, signAuthToken } from "../utils/jwt-auth.js";
 
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
@@ -51,6 +51,17 @@ export const googleLogin = async (req: Request, res: Response) => {
     });
 
     const token = signAuthToken({ userId: user.id, email: user.email });
+    await client.session.create({
+        data: {
+            id: randomUUID(),
+            token,
+            userId: user.id,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            ipAddress: req.ip,
+            userAgent: req.headers["user-agent"],
+        },
+    });
+
     setAuthCookie(res, token);
 
     return res.status(200).json({
@@ -72,7 +83,16 @@ export const googleLogin = async (req: Request, res: Response) => {
     });
 };
 
-export const logout = (_req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response) => {
+    const authorization = req.headers.authorization;
+    const token = authorization?.startsWith("Bearer ")
+        ? authorization.slice("Bearer ".length)
+        : req.cookies?.[AUTH_COOKIE_NAME];
+
+    if (token) {
+        await client.session.deleteMany({ where: { token } });
+    }
+
     clearAuthCookie(res);
     return res.status(200).json({ success: true });
 };
