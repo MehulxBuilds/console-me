@@ -5,10 +5,28 @@ import path from "node:path";
 import tls from "node:tls";
 import { fileURLToPath } from "node:url";
 
+const brokers = env.KAFKA_BROKER.split(",")
+    .map((broker) => broker.trim())
+    .filter(Boolean);
+
+const getBrokerHost = (broker: string) => {
+    const withoutProtocol = broker.replace(/^[a-z]+:\/\//i, "");
+
+    if (withoutProtocol.startsWith("[")) {
+        return withoutProtocol.slice(1, withoutProtocol.indexOf("]"));
+    }
+
+    return withoutProtocol.split(":")[0];
+};
+
+const bootstrapBrokerHost = getBrokerHost(brokers[0] ?? "");
+
 const kafkaConfig: KafkaConfig = {
     clientId: "console-me",
-    brokers: [env.KAFKA_BROKER,],
+    brokers,
     logLevel: logLevel.ERROR,
+    connectionTimeout: 10_000,
+    requestTimeout: 30_000,
     retry: {
         initialRetryTime: 100,
         retries: 8,
@@ -38,6 +56,7 @@ if (env.KAFKA_SSL) {
     if (fs.existsSync(caPath) && fs.existsSync(certPath) && fs.existsSync(keyPath)) {
         kafkaConfig.ssl = {
             rejectUnauthorized: true,
+            servername: bootstrapBrokerHost,
             ca: [fs.readFileSync(caPath, "utf-8")],
             cert: fs.readFileSync(certPath, "utf-8"),
             key: fs.readFileSync(keyPath, "utf-8"),
