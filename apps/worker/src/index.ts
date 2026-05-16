@@ -1,9 +1,11 @@
+import { createServer, type Server } from "node:http";
 import { getAccountCheckConsumer } from "./account-check-report-consumer";
 import { getNotificationConsumer } from "./notification-consumer";
 import { getPostConsumer } from "./post-consumer";
 import { getDMConsumer } from "./dm-consumer";
 import { ensureKafkaTopics } from "@repo/kafka";
 
+const PORT = Number.parseInt(process.env.PORT || "8081", 10);
 const LAG_CHECK_INTERVAL = 30000; // 30 seconds
 const HIGH_LAG_THRESHOLD = 1000;
 
@@ -21,6 +23,22 @@ const consumerGetters: (() => BaseConsumer)[] = [
 ];
 
 let consumers: BaseConsumer[] = [];
+let healthServer: Server | null = null;
+
+function startHealthServer() {
+    healthServer = createServer((_req, res) => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+            status: "ok",
+            service: "worker",
+            consumers: consumers.length,
+        }));
+    });
+
+    healthServer.listen(PORT, () => {
+        console.log(`Worker health server listening on ${PORT}`);
+    });
+}
 
 async function initConsumers() {
     const startedConsumers: BaseConsumer[] = [];
@@ -62,6 +80,7 @@ function startLagMonitoring(consumers: BaseConsumer[]) {
 
 async function runConsumer() {
     console.log("Initializing Kafka Consumer Service...");
+    startHealthServer();
 
     await ensureKafkaTopics();
 
@@ -76,6 +95,13 @@ async function runConsumer() {
     const shutdown = async () => {
         console.log("\nShutdown signal received. Closing all consumers...");
         await Promise.allSettled(consumers.filter(c => c.stop).map(c => c.stop!()));
+        await new Promise<void>((resolve) => {
+            if (!healthServer) {
+                resolve();
+                return;
+            }
+            healthServer.close(() => resolve());
+        });
         console.log("All consumers stopped. Exiting.");
         process.exit(0);
     };

@@ -7,7 +7,6 @@ import type { Consumer } from "@repo/kafka";
 import { server_env as env } from "@repo/env";
 
 const PORT = Number.parseInt(env.SOCKET_PORT || "8080", 10);
-const HOST = "0.0.0.0";
 const NODE_ID = crypto.randomUUID();
 
 const pubClient = createRedisClient();
@@ -221,8 +220,8 @@ process.on("SIGINT", shutdown);
 
 // ─── Start ───
 
-httpServer.listen(PORT, HOST, async () => {
-    console.log(`[WS] Socket server running on ${HOST}:${PORT} (node: ${NODE_ID})`);
+httpServer.listen(PORT, async () => {
+    console.log(`[WS] Socket server running on ${PORT} (node: ${NODE_ID})`);
 
     try {
         await startBroadcastConsumer();
