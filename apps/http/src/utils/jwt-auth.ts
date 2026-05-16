@@ -20,6 +20,19 @@ export const verifyAuthToken = (token: string) => {
     return jwt.verify(token, jwtSecret) as AuthJwtPayload;
 };
 
+export const getAuthTokenFromRequest = (req: { cookies?: Record<string, string>; headers: Record<string, string | string[] | undefined> }) => {
+    const cookieToken = req.cookies?.[AUTH_COOKIE_NAME];
+    if (cookieToken) return cookieToken;
+
+    const authorization = req.headers.authorization;
+    const authorizationValue = Array.isArray(authorization) ? authorization[0] : authorization;
+    if (authorizationValue?.startsWith("Bearer ")) {
+        return authorizationValue.slice("Bearer ".length);
+    }
+
+    return null;
+};
+
 export const setAuthCookie = (res: Response, token: string) => {
     res.cookie(AUTH_COOKIE_NAME, token, {
         httpOnly: true,

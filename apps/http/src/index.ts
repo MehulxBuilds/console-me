@@ -14,7 +14,7 @@ import followRoutes from "./routes/follow-routes";
 import omegleRoutes from "./routes/omegle-routes";
 import friendRoutes from "./routes/friend-routes";
 import authRoutes from "./routes/auth-routes";
-import { AUTH_COOKIE_NAME, verifyAuthToken } from "./utils/jwt-auth";
+import { getAuthTokenFromRequest, verifyAuthToken } from "./utils/jwt-auth";
 
 const app = express();
 
@@ -45,7 +45,7 @@ app.use(cookieParser())
 app.use("/api/auth", authRoutes);
 
 app.get("/api/me", async (req, res) => {
-    const token = req.cookies?.[AUTH_COOKIE_NAME];
+    const token = getAuthTokenFromRequest(req);
 
     if (!token) {
         return res.json(null);
