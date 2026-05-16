@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import { env } from "./config/env";
+import { server_env as env } from "@repo/env";
 
 export class NotificationCache {
     private redis: Redis;
@@ -7,7 +7,7 @@ export class NotificationCache {
     private readonly CACHE_TTL = 300;
 
     constructor() {
-        const redisUrl = env.HOST;
+        const redisUrl = env.REDIS_HOST;
         if (!redisUrl) {
             console.warn("REDIS_CACHE_URL not found, using default 6380");
         }

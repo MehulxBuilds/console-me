@@ -64,10 +64,19 @@ export default function DynamicProfilePage({ params }: { params: Promise<{ usern
   const { username } = React.use(params);
   const router = useRouter();
   const { activeNav, setActiveNav, setChatPopoverOpen } = useHomeUIStore();
+  const { data: meData } = useMeQuery(true);
+  const isOwnPlaceholderUsername = !!meData?.user && !meData.user.username && (
+    username === "user" || username === meData.user.email?.split("@")[0]
+  );
+
+  React.useEffect(() => {
+    if (isOwnPlaceholderUsername) {
+      router.replace("/creator");
+    }
+  }, [isOwnPlaceholderUsername, router]);
   
   // Fetch dynamic creator data
-  const { data: creatorData, isLoading, isError } = useCreatorByUsername(username);
-  const { data: meData } = useMeQuery(true);
+  const { data: creatorData, isLoading, isError } = useCreatorByUsername(username, !isOwnPlaceholderUsername);
 
   const creatorId = creatorData?.userId;
   const { data: realPosts, isLoading: postsLoading } = useCreatorPosts(creatorId || undefined);
@@ -91,8 +100,10 @@ export default function DynamicProfilePage({ params }: { params: Promise<{ usern
       return;
     }
     if (label === "Profile") {
-      const myUsername = meData?.user?.username || meData?.user?.email?.split('@')[0] || 'user';
-      if (myUsername !== username) {
+      const myUsername = meData?.user?.username;
+      if (!myUsername) {
+        router.push("/creator");
+      } else if (myUsername !== username) {
         router.push(`/creator/${myUsername}`);
       }
       return;

@@ -122,8 +122,8 @@ function ChatPageContent() {
             return;
         }
         if (label === "Profile") {
-            const username = meData?.user?.username || meData?.user?.email?.split('@')[0] || 'user';
-            router.push(`/creator/${username}`);
+            const username = meData?.user?.username;
+            router.push(username ? `/creator/${username}` : "/creator");
             return;
         }
         closeProfile();

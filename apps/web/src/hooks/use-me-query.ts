@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { API_BASE } from "@/utils/constants";
 
 export type MeResponse = {
   user: {
@@ -19,7 +20,7 @@ export type MeResponse = {
 } | null;
 
 const fetchMe = async (): Promise<MeResponse> => {
-  const response = await fetch("/api/me", {
+  const response = await fetch(`${API_BASE}/api/me`, {
     method: "GET",
     credentials: "include",
   });

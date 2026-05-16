@@ -4,7 +4,7 @@ import { AppError } from "../utils/app-error.js";
 import type { AuthRequest } from "../middleware/user-middleware.js";
 import { getOmegleMatchmaker } from "@repo/cache";
 import { AccessToken } from "livekit-server-sdk";
-import { env } from "../config/env.js";
+import { server_env as env } from "@repo/env";
 
 // Helper: generate a LiveKit access token for a user + room
 async function createLiveKitToken(roomName: string, participantIdentity: string, participantName: string): Promise<string> {

@@ -1,1 +1,3 @@
-export const API_BASE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:5000";
+import { web_env as env } from "@/lib/env";
+
+export const API_BASE = env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5000";

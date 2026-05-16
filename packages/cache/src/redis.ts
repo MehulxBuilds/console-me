@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import { env } from "./config/env";
+import { server_env as env } from "@repo/env";
 
 export interface UserSession {
     userId: string;
@@ -11,10 +11,10 @@ export interface UserSession {
 }
 
 const redisConfig = {
-    host: env.HOST,
-    port: env.PORT,
-    username: env.USERNAME,
-    password: env.PASSWORD,
+    host: env.REDIS_HOST,
+    port: parseInt(env.REDIS_PORT),
+    username: env.REDIS_USERNAME,
+    password: env.REDIS_PASSWORD,
 };
 
 export class SessionManager {

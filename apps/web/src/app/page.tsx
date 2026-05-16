@@ -1,16 +1,8 @@
-import { auth } from "@repo/auth";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { checkCreatorProfile } from "@/utils/auth-utils";
+import { checkCreatorProfile, requireAuth } from "@/utils/auth-utils";
 
 export default async function Home() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    redirect("/sign-in");
-  }
+  const session = await requireAuth();
 
   const profile = await checkCreatorProfile(session.user.id);
 

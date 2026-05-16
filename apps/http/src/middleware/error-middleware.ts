@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../utils/app-error.js";
-import { env } from "../config/env.js";
+import { server_env as env } from "@repo/env";
 
 const sendErrorDev = (err: AppError, res: Response) => {
     res.status(err.statusCode).json({
