@@ -5,21 +5,6 @@ import path from "node:path";
 import tls from "node:tls";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-
-const resolveCertificatePath = (certificatePath: string) => {
-    if (path.isAbsolute(certificatePath)) {
-        return certificatePath;
-    }
-
-    const rootRelativePath = path.resolve(repoRoot, certificatePath);
-    if (fs.existsSync(rootRelativePath)) {
-        return rootRelativePath;
-    }
-
-    return path.resolve(certificatePath);
-};
-
 const kafkaConfig: KafkaConfig = {
     clientId: "console-me",
     brokers: [env.KAFKA_BROKER,],
@@ -31,6 +16,21 @@ const kafkaConfig: KafkaConfig = {
 };
 
 if (env.KAFKA_SSL) {
+    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+
+    const resolveCertificatePath = (certificatePath: string) => {
+        if (path.isAbsolute(certificatePath)) {
+            return certificatePath;
+        }
+
+        const rootRelativePath = path.resolve(repoRoot, certificatePath);
+        if (fs.existsSync(rootRelativePath)) {
+            return rootRelativePath;
+        }
+
+        return path.resolve(certificatePath);
+    };
+
     const caPath = resolveCertificatePath(env.KAFKA_CA_CERT!);
     const certPath = resolveCertificatePath(env.KAFKA_CLIENT_CERT!);
     const keyPath = resolveCertificatePath(env.KAFKA_CLIENT_KEY!);
