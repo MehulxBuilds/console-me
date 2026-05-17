@@ -6,7 +6,12 @@ import { kafka, TOPICS } from "@repo/kafka";
 import type { Consumer } from "@repo/kafka";
 import { server_env as env } from "@repo/env";
 
-const PORT = Number.parseInt(process.env.PORT || env.SOCKET_PORT || "8080", 10);
+const PORT = Number.parseInt(
+    env.NODE_ENV === "production"
+        ? process.env.PORT || env.SOCKET_PORT || "8080"
+        : env.SOCKET_PORT || process.env.PORT || "8080",
+    10,
+);
 const HOST = "0.0.0.0";
 const NODE_ID = crypto.randomUUID();
 
